@@ -380,7 +380,7 @@ class ClickPLC(AsyncioModbusClient):
         coil = 8192 + 32 * (start // 100) + start % 100 - 1
 
         if isinstance(data, list):
-            if len(data) > 16 * (9 - start // 100) - start % 100:
+            if len(data) > 16 * (9 - start // 100) - start % 100 + 1:
                 raise ValueError('Data list longer than available addresses.')
             payload = []
             if (start % 100) + len(data) > 16:
