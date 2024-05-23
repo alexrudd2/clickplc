@@ -1,10 +1,13 @@
 """Test the driver correctly parses a tags file and responds with correct data."""
+import asyncio
 import contextlib
-import inspect
-import os
 
 import pytest
-from pymodbus.server import ModbusSimulatorServer
+
+try:
+    from pymodbus.server import ModbusTcpServer
+except ImportError:
+    from pymodbus.server.async_io import ModbusTcpServer
 
 from clickplc import ClickPLC, command_line
 
@@ -16,20 +19,26 @@ autouse = True
 # autouse = False
 
 @pytest.fixture(scope='session', autouse=autouse)
-async def _sim():
+async def _sim(worker_id):
     """Start a modbus server simulator."""
-    serverTask = ModbusSimulatorServer(
-        modbus_server = 'server',
-        modbus_device = 'device',
-        json_file = os.path.join('clickplc', 'tests', 'simulator_setup.json')
+    from pymodbus.datastore import (
+        ModbusSequentialDataBlock,
+        ModbusServerContext,
+        ModbusSlaveContext,
     )
-    if 'only_start' in inspect.signature(serverTask.run_forever).parameters:
-        await serverTask.run_forever(only_start=True)  # type: ignore
-    else:
-        await serverTask.run_forever()
+    store = ModbusSlaveContext(
+        di=ModbusSequentialDataBlock(0, [0]*65536),  # Discrete Inputs
+        co=ModbusSequentialDataBlock(0, [0]*65536),  # Coils
+        hr=ModbusSequentialDataBlock(0, [0]*65536),  # Holding Registers
+        ir=ModbusSequentialDataBlock(0, [0]*65536)   # Input Registers
+    )
+    context = ModbusServerContext(slaves=store, single=True)
+    server = ModbusTcpServer(context=context, address=("127.0.0.1", 5020))
+    asyncio.ensure_future(server.serve_forever())  # noqa: RUF006
+    await(asyncio.sleep(0))
     yield
-    with contextlib.suppress(NameError):
-        await serverTask.stop()
+    with contextlib.suppress(AttributeError):  # 2.x
+        await server.shutdown()  # type: ignore
 
 
 @pytest.fixture(scope='session')
