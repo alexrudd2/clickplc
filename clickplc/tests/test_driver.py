@@ -84,11 +84,11 @@ async def test_tagged_driver(expected_tags):
 @pytest.mark.asyncio(scope='session')
 async def test_y_roundtrip(plc_driver):
     """Confirm y (output bools) are read back correctly after being set."""
-    await plc_driver.set('y2', True)
-    await plc_driver.set('y3', [False, True])
-    expected = {'y001': False, 'y002': True, 'y003': False,
-                'y004': True, 'y005': False}
-    assert expected == await plc_driver.get('y1-y5')
+    await plc_driver.set('y1', [False, True, False, True])
+    expected = {'y001': False, 'y002': True, 'y003': False, 'y004': True}
+    assert expected == await plc_driver.get('y1-y4')
+    await plc_driver.set('y816', True)
+    assert await plc_driver.get('y816') is True
 
 
 @pytest.mark.asyncio(scope='session')
