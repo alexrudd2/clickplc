@@ -1,0 +1,66 @@
+{
+    "server_list": {
+        "server": {
+            "comm": "tcp",
+            "host": "0.0.0.0",
+            "port": 5020,
+            "ignore_missing_slaves": false,
+            "framer": "socket",
+            "identity": {
+                "VendorName": "pymodbus",
+                "ProductCode": "PM",
+                "VendorUrl": "https://github.com/pymodbus-dev/pymodbus/",
+                "ProductName": "pymodbus Server",
+                "ModelName": "pymodbus Server",
+                "MajorMinorRevision": "3.1.0"
+            }
+        }
+    },
+    "device_list": {
+        "device": {
+            "setup": {
+                "co size": 65536,
+                "di size": 65536,
+                "hr size": 65536,
+                "ir size": 65536,
+                "shared blocks": false,
+                "type exception": false,
+                "defaults": {
+                    "value": {
+                        "bits": 0,
+                        "uint16": 0,
+                        "uint32": 0,
+                        "float32": 0.0,
+                        "string": " "
+                    },
+                    "action": {
+                        "bits": null,
+                        "uint16": null,
+                        "uint32": null,
+                        "float32": null,
+                        "string": null
+                    }
+                }
+            },
+            "invalid": [],
+            "write": [
+                [0, 65535],
+                [131073, 262143]
+            ],
+            "bits": [
+                [0, 65535]
+            ],
+            "uint16": [
+                [131073, 262143]
+            ],
+            "uint32": [
+            ],
+            "float32": [
+            ],
+            "string": [
+            ],
+            "repeat": [
+            ]
+        }
+    }
+}

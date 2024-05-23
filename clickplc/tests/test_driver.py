@@ -1,14 +1,35 @@
 """Test the driver correctly parses a tags file and responds with correct data."""
-from unittest import mock
+import contextlib
+import inspect
+import os
 
 import pytest
+from pymodbus.server import ModbusSimulatorServer
 
-from clickplc import command_line
-from clickplc.mock import ClickPLC
+from clickplc import ClickPLC, command_line
 
-ADDRESS = 'fakeip'
-# from clickplc.driver import ClickPLC
+# Test against pymodbus simulator
+ADDRESS = '127.0.0.1'
+autouse = True
+## Uncomment below to use a real PLC
 # ADDRESS = '172.16.0.168'
+# autouse = False
+
+@pytest.fixture(scope='session', autouse=autouse)
+async def _sim():
+    """Start a modbus server simulator."""
+    serverTask = ModbusSimulatorServer(
+        modbus_server = 'server',
+        modbus_device = 'device',
+        json_file = os.path.join('clickplc', 'tests', 'simulator_setup.json')
+    )
+    if 'only_start' in inspect.signature(serverTask.run_forever).parameters:
+        await serverTask.run_forever(only_start=True)  # type: ignore
+    else:
+        await serverTask.run_forever()
+    yield
+    with contextlib.suppress(NameError):
+        await serverTask.stop()
 
 
 @pytest.fixture(scope='session')
@@ -41,7 +62,7 @@ def expected_tags():
         'timer': {'address': {'start': 449153}, 'id': 'CTD1', 'type': 'int32'},
     }
 
-@mock.patch('clickplc.ClickPLC', ClickPLC)
+
 def test_driver_cli(capsys):
     """Confirm the commandline interface works without a tags file."""
     command_line([ADDRESS])
@@ -50,7 +71,7 @@ def test_driver_cli(capsys):
     assert 'c100' in captured.out
     assert 'df100' in captured.out
 
-@mock.patch('clickplc.ClickPLC', ClickPLC)
+
 def test_driver_cli_tags(capsys):
     """Confirm the commandline interface works with a tags file."""
     command_line([ADDRESS, 'clickplc/tests/plc_tags.csv'])

@@ -27,6 +27,9 @@ setup(
     ],
     extras_require={
         'test': [
+            "aiohttp>=3.8.6;python_version<'3.12'",     # pymodbus doesn't properly define this
+            "aiohttp>=3.9.0b0;python_version=='3.12'",  # until version 3.5
+            'pymodbus[simulator]>=3.0.2',
             'pytest',
             'pytest-asyncio>=0.23.7,<=0.23.9',
             'pytest-cov',
