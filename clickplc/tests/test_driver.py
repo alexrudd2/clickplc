@@ -96,8 +96,10 @@ async def test_c_roundtrip(plc_driver):
     """Confirm c bools are read back correctly after being set."""
     await plc_driver.set('c2', True)
     await plc_driver.set('c3', [False, True])
+    await plc_driver.set('c2000', True)
     expected = {'c1': False, 'c2': True, 'c3': False, 'c4': True, 'c5': False}
     assert expected == await plc_driver.get('c1-c5')
+    assert await plc_driver.get('c2000') is True
 
 
 @pytest.mark.asyncio(scope='session')
