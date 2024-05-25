@@ -406,7 +406,7 @@ class ClickPLC(AsyncioModbusClient):
         coil = 16384 + start - 1
 
         if isinstance(data, list):
-            if len(data) > (2000 - start):
+            if len(data) > (2000 - start + 1):
                 raise ValueError('Data list longer than available addresses.')
             await self.write_coils(coil, data)
         else:
