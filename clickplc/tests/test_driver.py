@@ -19,7 +19,7 @@ autouse = True
 # autouse = False
 
 @pytest.fixture(scope='session', autouse=autouse)
-async def _sim(worker_id):
+async def _sim():
     """Start a modbus server simulator."""
     from pymodbus.datastore import (
         ModbusSequentialDataBlock,
