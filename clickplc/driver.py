@@ -438,7 +438,7 @@ class ClickPLC(AsyncioModbusClient):
             return builder.build()
 
         if isinstance(data, list):
-            if len(data) > 500 - start:
+            if len(data) > 500 - start + 1:
                 raise ValueError('Data list longer than available addresses.')
             payload = _pack(data)
             await self.write_registers(address, payload, skip_encode=True)
@@ -466,7 +466,7 @@ class ClickPLC(AsyncioModbusClient):
             return builder.build()
 
         if isinstance(data, list):
-            if len(data) > 4500 - start:
+            if len(data) > 4500 - start + 1:
                 raise ValueError('Data list longer than available addresses.')
             payload = _pack(data)
             await self.write_registers(address, payload, skip_encode=True)
