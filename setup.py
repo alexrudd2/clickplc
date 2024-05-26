@@ -27,10 +27,11 @@ setup(
     ],
     extras_require={
         'test': [
+            'pyserial-asyncio>=0.4.0; python_version == "3.8"',  # pymodbus 2.x
+            'pyserial-asyncio>=0.4.0; python_version == "3.9"',  # pymodbus 2.x
             'pytest',
             'pytest-asyncio>=0.23.7,<=0.23.9',
             'pytest-cov',
-            'pytest-xdist',
             'mypy==1.10.0',
             'ruff==0.4.2',
         ],
