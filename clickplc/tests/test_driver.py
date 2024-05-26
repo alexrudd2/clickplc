@@ -1,6 +1,7 @@
 """Test the driver correctly parses a tags file and responds with correct data."""
 import asyncio
 import contextlib
+from unittest import mock
 
 import pytest
 
@@ -10,6 +11,7 @@ except ImportError:
     from pymodbus.server.async_io import ModbusTcpServer
 
 from clickplc import ClickPLC, command_line
+from clickplc.mock import ClickPLC as MockClickPLC
 
 # Test against pymodbus simulator
 ADDRESS = '127.0.0.1'
@@ -20,7 +22,7 @@ autouse = True
 
 @pytest.fixture(scope='session', autouse=autouse)
 async def _sim():
-    """Start a modbus server simulator."""
+    """Start a modbus server and datastore."""
     from pymodbus.datastore import (
         ModbusSequentialDataBlock,
         ModbusServerContext,
@@ -79,6 +81,18 @@ def test_driver_cli(capsys):
     assert 'x816' in captured.out
     assert 'c100' in captured.out
     assert 'df100' in captured.out
+
+
+@mock.patch('clickplc.ClickPLC', MockClickPLC)
+def test_driver_cli_tags_mock(capsys):
+    """Confirm the (mocked) commandline interface works without a tags file."""
+    command_line([ADDRESS, 'clickplc/tests/plc_tags.csv'])
+    captured = capsys.readouterr()
+    assert 'P_101' in captured.out
+    assert 'VAHH_101_OK' in captured.out
+    assert 'TI_101' in captured.out
+    with pytest.raises(SystemExit):
+        command_line([ADDRESS, 'tags', 'bogus'])
 
 
 def test_driver_cli_tags(capsys):
