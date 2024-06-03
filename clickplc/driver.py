@@ -12,7 +12,7 @@ import csv
 import pydoc
 from collections import defaultdict
 from string import digits
-from typing import Any, ClassVar
+from typing import Any, ClassVar, overload
 
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadBuilder, BinaryPayloadDecoder
@@ -39,6 +39,7 @@ class ClickPLC(AsyncioModbusClient):
         'td': 'int16',   # (T)imer register
         'ctd': 'int32',  # (C)oun(t)er Current values, (d)ouble
         'sd': 'int16',   # (S)ystem (D)ata register, single
+        'txt': 'str',    # ASCII Text
     }
 
     def __init__(self, address, tag_filepath='', timeout=1):
@@ -134,7 +135,6 @@ class ClickPLC(AsyncioModbusClient):
         """
         if address in self.tags:
             address = self.tags[address]['id']
-
         if not isinstance(data, list):
             data = [data]
 
@@ -472,6 +472,40 @@ class ClickPLC(AsyncioModbusClient):
             return decoder.decode_16bit_int()
         return {f'sd{n}': decoder.decode_16bit_int() for n in range(start, end + 1)}
 
+    @overload
+    async def _get_txt(self, start: int, end: None) -> str: ...
+    @overload
+    async def _get_txt(self, start: int, end: int) -> dict: ...
+
+    async def _get_txt(self, start: int, end: int | None) -> str | dict:
+        """Read txt registers. Called by `get`.
+
+        TXT entries start at Modbus address 36864 (36865 in the Click software's
+        1-indexed notation). Each TXT entry takes 8 bits - which means a pair of
+        adjacent TXT entries are packed into a single 16-bit register.  For some
+        strange reason they are packed little-endian, so the registers must be
+        manually decoded.
+        """
+        if start < 1 or start > 1000:
+            raise ValueError('TXT must be in [1, 1000]')
+        if end is not None and (end < 1 or end > 1000):
+            raise ValueError('TXT end must be in [1, 1000]')
+
+        address = 36864 + (start - 1) // 2
+        count = 1 if end is None else (end - start) // 2 + 1
+        registers = await self.read_registers(address, count)
+        decoder = BinaryPayloadDecoder.fromRegisters(registers)  # endian irrelevant; manual decode
+        if end is None:
+            if start % 2:  # if even, discard the MSB
+                decoder.decode_string()
+            return decoder.decode_string().decode()
+        r = ''
+        for _ in range(count):
+            msb = chr(decoder.decode_8bit_int())
+            lsb = chr(decoder.decode_8bit_int())
+            r += lsb + msb
+        return {f'txt{start}-txt{end}': r}
+
     async def _set_y(self, start: int, data: list[bool] | bool):
         """Set Y addresses. Called by `set`.
 
@@ -630,6 +664,39 @@ class ClickPLC(AsyncioModbusClient):
             await self.write_registers(address, payload, skip_encode=True)
         else:
             await self.write_register(address, _pack([data]), skip_encode=True)
+
+    async def _set_txt(self, start: int, data: str | list[str]):
+        """Set TXT registers. Called by `set`.
+
+        See _get_txt for more information.
+        """
+        if start < 1 or start > 1000:
+            raise ValueError('TXT must be in [1, 1000]')
+        address = 36864 + (start - 1) // 2
+
+        def _pack(values: str):
+            assert len(values) % 2 == 0
+            builder = BinaryPayloadBuilder()  # endianness irrelevant; manual packing
+            for i in range(0, len(values), 2):
+                builder.add_8bit_uint(ord(values[i + 1]))
+                builder.add_8bit_uint(ord(values[i + 0]))
+            return builder.build()
+
+        assert isinstance(data, list)
+        if len(data) > 1000 - start + 1:
+            raise ValueError('Data list longer than available addresses.')
+        string = data[0]
+
+        # two 8-bit text addresses are packed into one 16-bit modbus register
+        # and we can't mask a modbus write (i.e. all 16 bits must be written)
+        # thus, if changing a single address retrieve and write its 'twin' address back
+        if len(string) % 2:
+            if start % 2:
+                string += await self._get_txt(start=start + 1, end=None)
+            else:
+                string = await self._get_txt(start=start - 1, end=None) + string
+        payload = _pack(string)
+        await self.write_registers(address, payload, skip_encode=True)
 
     def _load_tags(self, tag_filepath: str) -> dict:
         """Load tags from file path.
