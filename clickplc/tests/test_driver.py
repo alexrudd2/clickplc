@@ -140,8 +140,12 @@ async def test_txt_roundtrip(plc_driver):
     """Confirm texts are read back correctly after being set."""
     await plc_driver.set('txt1', 'AB')
     await plc_driver.set('txt3', 'CDEF')
-    expected = {'txt1-txt6': 'ABCDEF'}
-    assert expected == await plc_driver.get('txt1-txt6')
+    await plc_driver.set('txt7', 'G')
+    expected = {'txt1-txt7': 'ABCDEFG'}
+    assert expected == await plc_driver.get('txt1-txt7')
+    expected = {'txt2-txt7': 'BCDEFG'}
+    assert expected == await plc_driver.get('txt2-txt7')
+
     await plc_driver.set('txt1000', '0')
     assert await plc_driver.get('txt1000') == '0'
     await plc_driver.set('txt999', '9')

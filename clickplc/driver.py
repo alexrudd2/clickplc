@@ -476,8 +476,7 @@ class ClickPLC(AsyncioModbusClient):
     async def _get_txt(self, start: int, end: None) -> str: ...
     @overload
     async def _get_txt(self, start: int, end: int) -> dict: ...
-
-    async def _get_txt(self, start: int, end: int | None) -> str | dict:
+    async def _get_txt(self, start, end):
         """Read txt registers. Called by `get`.
 
         TXT entries start at Modbus address 36864 (36865 in the Click software's
@@ -492,18 +491,25 @@ class ClickPLC(AsyncioModbusClient):
             raise ValueError('TXT end must be in [1, 1000]')
 
         address = 36864 + (start - 1) // 2
-        count = 1 if end is None else (end - start) // 2 + 1
-        registers = await self.read_registers(address, count)
-        decoder = BinaryPayloadDecoder.fromRegisters(registers)  # endian irrelevant; manual decode
         if end is None:
-            if start % 2:  # if even, discard the MSB
+            registers = await self.read_registers(address, 1)
+            decoder = BinaryPayloadDecoder.fromRegisters(registers)
+            if start % 2:  # if starting on the second byte of a 16-bit register, discard the MSB
                 decoder.decode_string()
             return decoder.decode_string().decode()
+
+        count = 1 + (end - start) // 2 + (start - 1) % 2
+        registers = await self.read_registers(address, count)
+        decoder = BinaryPayloadDecoder.fromRegisters(registers)  # endian irrelevant; manual decode
         r = ''
         for _ in range(count):
             msb = chr(decoder.decode_8bit_int())
             lsb = chr(decoder.decode_8bit_int())
             r += lsb + msb
+        if end % 2:  # if ending on the first byte of a 16-bit register, discard the final LSB
+            r = r[:-1]
+        if not start % 2:
+            r = r[1:]  # if starting on the last byte of a 16-bit register, discard the first MSB
         return {f'txt{start}-txt{end}': r}
 
     async def _set_y(self, start: int, data: list[bool] | bool):
