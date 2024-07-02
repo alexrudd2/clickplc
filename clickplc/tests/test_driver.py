@@ -136,6 +136,23 @@ async def test_dd_roundtrip(plc_driver):
     assert await plc_driver.get('dd1000') == 1000
 
 @pytest.mark.asyncio(scope='session')
+async def test_txt_roundtrip(plc_driver):
+    """Confirm texts are read back correctly after being set."""
+    await plc_driver.set('txt1', 'AB')
+    await plc_driver.set('txt3', 'CDEF')
+    await plc_driver.set('txt7', 'G')
+    expected = {'txt1-txt7': 'ABCDEFG'}
+    assert expected == await plc_driver.get('txt1-txt7')
+    expected = {'txt2-txt7': 'BCDEFG'}
+    assert expected == await plc_driver.get('txt2-txt7')
+
+    await plc_driver.set('txt1000', '0')
+    assert await plc_driver.get('txt1000') == '0'
+    await plc_driver.set('txt999', '9')
+    assert await plc_driver.get('txt999') == '9'
+    assert await plc_driver.get('txt1000') == '0'  # ensure txt999 did not clobber it
+
+@pytest.mark.asyncio(scope='session')
 async def test_get_error_handling(plc_driver):
     """Confirm the driver gives an error on invalid get() calls."""
     with pytest.raises(ValueError, match='An address must be supplied'):
