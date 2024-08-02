@@ -146,7 +146,7 @@ class ClickPLC(AsyncioModbusClient):
         for datum in data:
             if type(datum) == int and data_type == 'float':  # noqa: E721
                 datum = float(datum)
-            if type(datum) != pydoc.locate(data_type):
+            if type(datum) != pydoc.locate(data_type):  # noqa: E721
                 raise ValueError(f"Expected {address} as a {data_type}.")
         return await getattr(self, '_set_' + category)(index, data)
 
