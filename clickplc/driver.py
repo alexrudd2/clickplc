@@ -35,6 +35,7 @@ class ClickPLC(AsyncioModbusClient):
         'ct': 'bool',    # (C)oun(t)er
         'ds': 'int16',   # (D)ata register (s)ingle
         'dd': 'int32',   # (D)ata register, (d)ouble
+        'dh': 'int16',   # (D)ata register, (h)ex
         'df': 'float',   # (D)ata register (f)loating point
         'td': 'int16',   # (T)imer register
         'ctd': 'int32',  # (C)oun(t)er Current values, (d)ouble
@@ -379,6 +380,29 @@ class ClickPLC(AsyncioModbusClient):
             return decoder.decode_32bit_int()
         return {f'dd{n}': decoder.decode_32bit_int() for n in range(start, end + 1)}
 
+    async def _get_dh(self, start: int, end: int) -> dict | int:
+        """Read DH registers.
+
+        DH entries start at Modbus address 24576 (24577 in the Click software's
+        1-indexed notation). Each DH entry takes 16 bits.
+        """
+        if start < 1 or start > 500:
+            raise ValueError('DH must be in [1, 500]')
+        if end is not None and (end < 1 or end > 500):
+            raise ValueError('DH end must be in [1, 500]')
+
+        address = 24576 + start - 1
+        count = 1 if end is None else (end - start + 1)
+        registers = await self.read_registers(address, count)
+        bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
+        lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore
+        decoder = BinaryPayloadDecoder.fromRegisters(registers,
+                                                     byteorder=bigendian,
+                                                     wordorder=lilendian)
+        if end is None:
+            return decoder.decode_16bit_uint()
+        return {f'dh{n}': decoder.decode_16bit_uint() for n in range(start, end + 1)}
+
     async def _get_df(self, start: int, end: int) -> dict | float:
         """Read DF registers. Called by `get`.
 
@@ -643,6 +667,34 @@ class ClickPLC(AsyncioModbusClient):
             await self.write_registers(address, payload, skip_encode=True)
         else:
             await self.write_register(address, _pack([data]), skip_encode=True)
+
+    async def _set_dh(self, start: int, data: list[int] | int):
+        """Set DH registers. Called by `set`.
+
+        See _get_dh for more information.
+        """
+        if start < 1 or start > 500:
+            raise ValueError('DH must be in [1, 500]')
+        address = 24576 + (start - 1)
+
+        bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
+        lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore
+
+        def _pack(values: list[int]):
+            builder = BinaryPayloadBuilder(byteorder=bigendian,
+                                           wordorder=lilendian)
+            for value in values:
+                builder.add_16bit_uint(int(value))
+            return builder.build()
+
+        if isinstance(data, list):
+            if len(data) > 500 - start + 1:
+                raise ValueError('Data list longer than available addresses.')
+            payload = _pack(data)
+            await self.write_registers(address, payload, skip_encode=True)
+        else:
+            await self.write_register(address, _pack([data]), skip_encode=True)
+
 
     async def _set_td(self, start: int, data: list[int] | int):
         """Set TD registers. Called by `set`.
