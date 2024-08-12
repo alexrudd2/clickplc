@@ -153,7 +153,7 @@ class ClickPLC(AsyncioModbusClient):
                 raise ValueError(f"Expected {address} as a {data_type}.")
         return await getattr(self, '_set_' + category)(index, data)
 
-    async def _get_x(self, start: int, end: int) -> dict:
+    async def _get_x(self, start: int, end: int | None) -> dict:
         """Read X addresses. Called by `get`.
 
         X entries start at 0 (1 in the Click software's 1-indexed
@@ -180,18 +180,16 @@ class ClickPLC(AsyncioModbusClient):
 
         start_coil = 32 * (start // 100) + start % 100 - 1
         if end is None:
-            count = 1
-        else:
-            if end % 100 == 0 or end % 100 > 16:
-                raise ValueError('X end address must be *01-*16.')
-            if end < 1 or end > 816:
-                raise ValueError('X end address must be in [001, 816].')
-            end_coil = 32 * (end // 100) + end % 100 - 1
-            count = end_coil - start_coil + 1
-
-        coils = await self.read_coils(start_coil, count)
-        if count == 1:
+            coils = await self.read_coils(start_coil, 1)
             return coils.bits[0]
+
+        if end % 100 == 0 or end % 100 > 16:
+            raise ValueError('X end address must be *01-*16.')
+        if end < 1 or end > 816:
+            raise ValueError('X end address must be in [001, 816].')
+        end_coil = 32 * (end // 100) + end % 100 - 1
+        count = end_coil - start_coil + 1
+        coils = await self.read_coils(start_coil, count)
         output = {}
         current = start
         for bit in coils.bits:
@@ -204,7 +202,7 @@ class ClickPLC(AsyncioModbusClient):
             current += 1
         return output
 
-    async def _get_y(self, start: int, end: int) -> dict:
+    async def _get_y(self, start: int, end: int | None) -> dict:
         """Read Y addresses. Called by `get`.
 
         Y entries start at 8192 (8193 in the Click software's 1-indexed
@@ -231,18 +229,16 @@ class ClickPLC(AsyncioModbusClient):
 
         start_coil = 8192 + 32 * (start // 100) + start % 100 - 1
         if end is None:
-            count = 1
-        else:
-            if end % 100 == 0 or end % 100 > 16:
-                raise ValueError('Y end address must be *01-*16.')
-            if end < 1 or end > 816:
-                raise ValueError('Y end address must be in [001, 816].')
-            end_coil = 8192 + 32 * (end // 100) + end % 100 - 1
-            count = end_coil - start_coil + 1
-
-        coils = await self.read_coils(start_coil, count)
-        if count == 1:
+            coils = await self.read_coils(start_coil, 1)
             return coils.bits[0]
+
+        if end % 100 == 0 or end % 100 > 16:
+            raise ValueError('Y end address must be *01-*16.')
+        if end < 1 or end > 816:
+            raise ValueError('Y end address must be in [001, 816].')
+        end_coil = 8192 + 32 * (end // 100) + end % 100 - 1
+        count = end_coil - start_coil + 1
+        coils = await self.read_coils(start_coil, count)
         output = {}
         current = start
         for bit in coils.bits:
@@ -255,7 +251,7 @@ class ClickPLC(AsyncioModbusClient):
             current += 1
         return output
 
-    async def _get_c(self, start: int, end: int) -> dict | bool:
+    async def _get_c(self, start: int, end: int | None) -> dict | bool:
         """Read C addresses. Called by `get`.
 
         C entries start at 16384 (16385 in the Click software's 1-indexed
@@ -270,19 +266,16 @@ class ClickPLC(AsyncioModbusClient):
 
         start_coil = 16384 + start - 1
         if end is None:
-            count = 1
-        else:
-            if end <= start or end > 2000:
-                raise ValueError('C end address must be >start and <=2000.')
-            end_coil = 16384 + end - 1
-            count = end_coil - start_coil + 1
+            return (await self.read_coils(start_coil, 1)).bits[0]
 
+        if end <= start or end > 2000:
+            raise ValueError('C end address must be >start and <=2000.')
+        end_coil = 16384 + end - 1
+        count = end_coil - start_coil + 1
         coils = await self.read_coils(start_coil, count)
-        if count == 1:
-            return coils.bits[0]
         return {f'c{(start + i)}': bit for i, bit in enumerate(coils.bits) if i < count}
 
-    async def _get_t(self, start: int, end: int) -> dict | bool:
+    async def _get_t(self, start: int, end: int | None) -> dict | bool:
         """Read T addresses.
 
         T entries start at 45056 (45057 in the Click software's 1-indexed
@@ -297,19 +290,17 @@ class ClickPLC(AsyncioModbusClient):
 
         start_coil = 45057 + start - 1
         if end is None:
-            count = 1
-        else:
-            if end <= start or end > 500:
-                raise ValueError('T end address must be >start and <=500.')
-            end_coil = 14555 + end - 1
-            count = end_coil - start_coil + 1
-
-        coils = await self.read_coils(start_coil, count)
-        if count == 1:
+            coils = await self.read_coils(start_coil, 1)
             return coils.bits[0]
+
+        if end <= start or end > 500:
+            raise ValueError('T end address must be >start and <=500.')
+        end_coil = 14555 + end - 1
+        count = end_coil - start_coil + 1
+        coils = await self.read_coils(start_coil, count)
         return {f't{(start + i)}': bit for i, bit in enumerate(coils.bits) if i < count}
 
-    async def _get_ct(self, start: int, end: int) -> dict | bool:
+    async def _get_ct(self, start: int, end: int | None) -> dict | bool:
         """Read CT addresses.
 
         CT entries start at 49152 (49153 in the Click software's 1-indexed
@@ -324,7 +315,8 @@ class ClickPLC(AsyncioModbusClient):
 
         start_coil = 49152 + start - 1
         if end is None:
-            count = 1
+            coils = await self.read_coils(start_coil, 1)
+            return coils.bits[0]
         else:
             if end <= start or end > 250:
                 raise ValueError('CT end address must be >start and <=250.')
@@ -332,11 +324,9 @@ class ClickPLC(AsyncioModbusClient):
             count = end_coil - start_coil + 1
 
         coils = await self.read_coils(start_coil, count)
-        if count == 1:
-            return coils.bits[0]
         return {f'ct{(start + i)}': bit for i, bit in enumerate(coils.bits) if i < count}
 
-    async def _get_ds(self, start: int, end: int) -> dict | int:
+    async def _get_ds(self, start: int, end: int | None) -> dict | int:
         """Read DS registers. Called by `get`.
 
         DS entries start at Modbus address 0 (1 in the Click software's
@@ -357,7 +347,7 @@ class ClickPLC(AsyncioModbusClient):
             return decoder.decode_16bit_int()
         return {f'ds{n}': decoder.decode_16bit_int() for n in range(start, end + 1)}
 
-    async def _get_dd(self, start: int, end: int) -> dict | int:
+    async def _get_dd(self, start: int, end: int | None) -> dict | int:
         """Read DD registers.
 
         DD entries start at Modbus address 16384 (16385 in the Click software's
@@ -378,7 +368,7 @@ class ClickPLC(AsyncioModbusClient):
             return decoder.decode_32bit_int()
         return {f'dd{n}': decoder.decode_32bit_int() for n in range(start, end + 1)}
 
-    async def _get_dh(self, start: int, end: int) -> dict | int:
+    async def _get_dh(self, start: int, end: int | None) -> dict | int:
         """Read DH registers.
 
         DH entries start at Modbus address 24576 (24577 in the Click software's
@@ -399,7 +389,7 @@ class ClickPLC(AsyncioModbusClient):
             return decoder.decode_16bit_uint()
         return {f'dh{n}': decoder.decode_16bit_uint() for n in range(start, end + 1)}
 
-    async def _get_df(self, start: int, end: int) -> dict | float:
+    async def _get_df(self, start: int, end: int | None) -> dict | float:
         """Read DF registers. Called by `get`.
 
         DF entries start at Modbus address 28672 (28673 in the Click software's
@@ -421,7 +411,7 @@ class ClickPLC(AsyncioModbusClient):
             return decoder.decode_32bit_float()
         return {f'df{n}': decoder.decode_32bit_float() for n in range(start, end + 1)}
 
-    async def _get_td(self, start: int, end: int) -> dict:
+    async def _get_td(self, start: int, end: int | None) -> dict:
         """Read TD registers. Called by `get`.
 
         TD entries start at Modbus address 45056 (45057 in the Click software's
@@ -442,7 +432,7 @@ class ClickPLC(AsyncioModbusClient):
             return decoder.decode_16bit_int()
         return {f'td{n}': decoder.decode_16bit_int() for n in range(start, end + 1)}
 
-    async def _get_ctd(self, start: int, end: int) -> dict:
+    async def _get_ctd(self, start: int, end: int | None) -> dict:
         """Read CTD registers. Called by `get`.
 
         CTD entries start at Modbus address 449152 (449153 in the Click software's
@@ -463,7 +453,7 @@ class ClickPLC(AsyncioModbusClient):
             return decoder.decode_32bit_int()
         return {f'ctd{n}': decoder.decode_32bit_int() for n in range(start, end + 1)}
 
-    async def _get_sd(self, start: int, end: int) -> dict | int:
+    async def _get_sd(self, start: int, end: int | None) -> dict | int:
         """Read SD registers. Called by `get`.
 
         SD entries start at Modbus address 361440 (361441 in the Click software's
