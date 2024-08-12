@@ -68,6 +68,7 @@ Currently, the following datatypes are supported:
 | ct | bool | (C)oun(t)er |
 | ds | int16 | (D)ata register, (s)ingle signed int |
 | dd | int32 | (D)ata register, (d)double signed int |
+| dh | uint16| (D) register, (h)ex |
 | df | float | (D)ata register, (f)loating point |
 | td | int16 | (T)ime (d)elay register |
 | ctd | int32 | (C)oun(t)er Current Values, (d)ouble int |
