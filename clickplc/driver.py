@@ -53,6 +53,8 @@ class ClickPLC(AsyncioModbusClient):
 
         """
         super().__init__(address, timeout)
+        self.bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
+        self.lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore[attr-defined]
         self.tags = self._load_tags(tag_filepath)
         self.active_addresses = self._get_address_ranges(self.tags)
 
@@ -348,11 +350,9 @@ class ClickPLC(AsyncioModbusClient):
         address = 0 + start - 1
         count = 1 if end is None else (end - start + 1)
         registers = await self.read_registers(address, count)
-        bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
-        lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore
         decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=bigendian,
-                                                     wordorder=lilendian)
+                                                     byteorder=self.bigendian,
+                                                     wordorder=self.lilendian)
         if end is None:
             return decoder.decode_16bit_int()
         return {f'ds{n}': decoder.decode_16bit_int() for n in range(start, end + 1)}
@@ -371,11 +371,9 @@ class ClickPLC(AsyncioModbusClient):
         address = 16384 + 2 * (start - 1)  # 32-bit
         count = 2 if end is None else 2 * (end - start + 1)
         registers = await self.read_registers(address, count)
-        bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
-        lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore
         decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=bigendian,
-                                                     wordorder=lilendian)
+                                                     byteorder=self.bigendian,
+                                                     wordorder=self.lilendian)
         if end is None:
             return decoder.decode_32bit_int()
         return {f'dd{n}': decoder.decode_32bit_int() for n in range(start, end + 1)}
@@ -394,11 +392,9 @@ class ClickPLC(AsyncioModbusClient):
         address = 24576 + start - 1
         count = 1 if end is None else (end - start + 1)
         registers = await self.read_registers(address, count)
-        bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
-        lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore
         decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=bigendian,
-                                                     wordorder=lilendian)
+                                                     byteorder=self.bigendian,
+                                                     wordorder=self.lilendian)
         if end is None:
             return decoder.decode_16bit_uint()
         return {f'dh{n}': decoder.decode_16bit_uint() for n in range(start, end + 1)}
@@ -418,11 +414,9 @@ class ClickPLC(AsyncioModbusClient):
         address = 28672 + 2 * (start - 1)
         count = 2 * (1 if end is None else (end - start + 1))
         registers = await self.read_registers(address, count)
-        bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
-        lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore
         decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=bigendian,
-                                                     wordorder=lilendian)
+                                                     byteorder=self.bigendian,
+                                                     wordorder=self.lilendian)
         if end is None:
             return decoder.decode_32bit_float()
         return {f'df{n}': decoder.decode_32bit_float() for n in range(start, end + 1)}
@@ -441,11 +435,9 @@ class ClickPLC(AsyncioModbusClient):
         address = 45056 + (start - 1)
         count = 1 if end is None else (end - start + 1)
         registers = await self.read_registers(address, count)
-        bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
-        lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore
         decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=bigendian,
-                                                     wordorder=lilendian)
+                                                     byteorder=self.bigendian,
+                                                     wordorder=self.lilendian)
         if end is None:
             return decoder.decode_16bit_int()
         return {f'td{n}': decoder.decode_16bit_int() for n in range(start, end + 1)}
@@ -464,11 +456,9 @@ class ClickPLC(AsyncioModbusClient):
         address = 49152 + 2 * (start - 1)  # 32-bit
         count = 1 if end is None else (end - start + 1)
         registers = await self.read_registers(address, count * 2)
-        bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
-        lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore
         decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=bigendian,
-                                                     wordorder=lilendian)
+                                                     byteorder=self.bigendian,
+                                                     wordorder=self.lilendian)
         if end is None:
             return decoder.decode_32bit_int()
         return {f'ctd{n}': decoder.decode_32bit_int() for n in range(start, end + 1)}
@@ -487,11 +477,9 @@ class ClickPLC(AsyncioModbusClient):
         address = 61440 + start - 1
         count = 1 if end is None else (end - start + 1)
         registers = await self.read_registers(address, count)
-        bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
-        lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore
         decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=bigendian,
-                                                     wordorder=lilendian)
+                                                     byteorder=self.bigendian,
+                                                     wordorder=self.lilendian)
         if end is None:
             return decoder.decode_16bit_int()
         return {f'sd{n}': decoder.decode_16bit_int() for n in range(start, end + 1)}
@@ -596,12 +584,9 @@ class ClickPLC(AsyncioModbusClient):
             raise ValueError('DF must be in [1, 500]')
         address = 28672 + 2 * (start - 1)
 
-        bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
-        lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore
-
         def _pack(values: list[float]):
-            builder = BinaryPayloadBuilder(byteorder=bigendian,
-                                           wordorder=lilendian)
+            builder = BinaryPayloadBuilder(byteorder=self.bigendian,
+                                           wordorder=self.lilendian)
             for value in values:
                 builder.add_32bit_float(float(value))
             return builder.build()
@@ -623,12 +608,9 @@ class ClickPLC(AsyncioModbusClient):
             raise ValueError('DS must be in [1, 4500]')
         address = (start - 1)
 
-        bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
-        lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore
-
         def _pack(values: list[int]):
-            builder = BinaryPayloadBuilder(byteorder=bigendian,
-                                           wordorder=lilendian)
+            builder = BinaryPayloadBuilder(byteorder=self.bigendian,
+                                           wordorder=self.lilendian)
             for value in values:
                 builder.add_16bit_int(int(value))
             return builder.build()
@@ -650,12 +632,9 @@ class ClickPLC(AsyncioModbusClient):
             raise ValueError('DD must be in [1, 1000]')
         address = 16384 + 2 * (start - 1)
 
-        bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
-        lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore
-
         def _pack(values: list[int]):
-            builder = BinaryPayloadBuilder(byteorder=bigendian,
-                                           wordorder=lilendian)
+            builder = BinaryPayloadBuilder(byteorder=self.bigendian,
+                                           wordorder=self.lilendian)
             for value in values:
                 builder.add_32bit_int(int(value))
             return builder.build()
@@ -677,12 +656,9 @@ class ClickPLC(AsyncioModbusClient):
             raise ValueError('DH must be in [1, 500]')
         address = 24576 + (start - 1)
 
-        bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
-        lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore
-
         def _pack(values: list[int]):
-            builder = BinaryPayloadBuilder(byteorder=bigendian,
-                                           wordorder=lilendian)
+            builder = BinaryPayloadBuilder(byteorder=self.bigendian,
+                                           wordorder=self.lilendian)
             for value in values:
                 builder.add_16bit_uint(int(value))
             return builder.build()
@@ -705,12 +681,9 @@ class ClickPLC(AsyncioModbusClient):
             raise ValueError('TD must be in [1, 500]')
         address = 45056 + (start - 1)
 
-        bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
-        lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore
-
         def _pack(values: list[int]):
-            builder = BinaryPayloadBuilder(byteorder=bigendian,
-                                           wordorder=lilendian)
+            builder = BinaryPayloadBuilder(byteorder=self.bigendian,
+                                           wordorder=self.lilendian)
             for value in values:
                 builder.add_16bit_int(int(value))
             return builder.build()

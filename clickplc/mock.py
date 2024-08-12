@@ -19,6 +19,8 @@ except ImportError:
     from pymodbus.bit_write_message import WriteMultipleCoilsResponse, WriteSingleCoilResponse  # type: ignore
     from pymodbus.register_read_message import ReadHoldingRegistersResponse  # type: ignore
     from pymodbus.register_write_message import WriteMultipleRegistersResponse  # type: ignore
+from pymodbus.constants import Endian
+
 from clickplc.driver import ClickPLC as realClickPLC
 
 
@@ -46,6 +48,8 @@ class ClickPLC(realClickPLC):
         self._detect_pymodbus_version()
         if self.pymodbus33plus:
             self.client.close = lambda: None
+        self.bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type: ignore[attr-defined]
+        self.lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type: ignore[attr-defined]
 
     async def _request(self, method, *args, **kwargs):
         if method == 'read_coils':
