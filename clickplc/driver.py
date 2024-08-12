@@ -33,10 +33,13 @@ class ClickPLC(AsyncioModbusClient):
         'c': 'bool',     # (C)ontrol relay
         't': 'bool',     # (T)imer
         'ct': 'bool',    # (C)oun(t)er
+        'sc': 'bool',    # (S)ystem (C)ontrol Bit
         'ds': 'int16',   # (D)ata register (s)ingle
         'dd': 'int32',   # (D)ata register, (d)ouble
         'dh': 'int16',   # (D)ata register, (h)ex
         'df': 'float',   # (D)ata register (f)loating point
+        'xd': None,      # Input register
+        'yd': None,      # Output register
         'td': 'int16',   # (T)imer register
         'ctd': 'int32',  # (C)oun(t)er Current values, (d)ouble
         'sd': 'int16',   # (S)ystem (D)ata register, single
@@ -326,6 +329,39 @@ class ClickPLC(AsyncioModbusClient):
         coils = await self.read_coils(start_coil, count)
         return {f'ct{(start + i)}': bit for i, bit in enumerate(coils.bits) if i < count}
 
+    async def _get_sc(self, start: int, end: int | None) -> dict | bool:
+        """Read SC addresses.
+
+        SC entries start at 61441 (61442 in the Click software's 1-indexed
+        notation). This continues* for 1000 bits, ending at 62439.
+
+        Note that some SC entries are read-only (Discrete Input), and others are
+        read-write (Coils).  These are unfortunately mixed together.  For example:
+        SC49 - di   - 61489 - function code 02
+        SC50 - coil - 61490 - function code 01
+        SC51 - coil - 61490 - function code 01
+
+        The response always returns a full byte of data. If you request
+        a number of addresses not divisible by 8, it will have extra data. The
+        extra data here is discarded before returning.
+        """
+        if start < 1 or start > 1000:
+            raise ValueError('SC start address must be 1-1000.')
+
+        start_coil = 61441 + start - 1
+        if end is None:
+            count = 1
+        else:
+            if end <= start or end > 1000:
+                raise ValueError('SC end address must be >start and <=1000.')
+            end_coil = 62439 + end - 1
+            count = end_coil - start_coil + 1
+
+        coils = await self.read_coils(start_coil, count)
+        if count == 1:
+            return coils.bits[0]
+        return {f'sc{(start + i)}': bit for i, bit in enumerate(coils.bits) if i < count}
+
     async def _get_ds(self, start: int, end: int | None) -> dict | int:
         """Read DS registers. Called by `get`.
 
@@ -558,6 +594,46 @@ class ClickPLC(AsyncioModbusClient):
             await self.write_coils(coil, data)
         else:
             await self.write_coil(coil, data)
+
+    async def _set_sc(self, start: int, data: list[bool] | bool):
+        """Set SC addresses. Called by `set`.
+
+        For more information on the quirks of SC coils, read the `_get_sc`
+        docstring.
+        """
+        raise NotImplementedError
+        if start < 1 or start > 1000:
+            raise ValueError('SC start address must be 1-1000.')
+        writeable = (  # only these are writeable
+            50,  # _PLC_Mode_Change_to_STOP
+            51,  # _Watchdog_Timer_Reset
+            53,  # _RTC_Date_Change
+            55,  # _RTC_Time_Change
+            60,  # _BT_Disable_Pairing  (Plus only?)
+            61,  # _BT_Activate_Pairing (Plus only?)
+            65,  # _SD_Eject
+            66,  # _SD_Delete_All
+            67,  # _SD_Copy_System
+            75,  # _WLAN_Reset (Plus only?)
+            76,  # _Sub_CPU_Reset,
+            120, # _Network_Time_Request
+            121, # _Network_Time_DST
+        )
+        coil = 1441 + start - 1
+        raise ValueError(coil)
+
+        if isinstance(data, list):
+            if len(data) > (1000 - start + 1):
+                raise ValueError('Data list longer than available addresses.')
+            for offset, value in enumerate(data):
+                if start + offset not in writeable:
+                    raise ValueError(f'sd{start + offset} is not writeable')
+                    await self.write_coil(coil, value)
+        else:
+            if start not in writeable:
+                raise ValueError(f'sd{start} is not writeable')
+            await self.write_coil(coil, data)
+
 
     async def _set_df(self, start: int, data: list[float] | float):
         """Set DF registers. Called by `set`.

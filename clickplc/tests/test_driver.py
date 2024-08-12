@@ -232,6 +232,14 @@ async def test_ct_error_handling(plc_driver):
         await plc_driver.get('ct1-ct251')
 
 @pytest.mark.asyncio(loop_scope='session')
+async def test_sc_error_handling(plc_driver):
+    """Ensure errors are handled for invalid requests of sc registers."""
+    with pytest.raises(ValueError, match=r'SC start address must be 1-1000.'):
+        await plc_driver.get('sc1001')
+    with pytest.raises(ValueError, match=r'SC end address must be >start and <=1000.'):
+        await plc_driver.get('sc1-sc1001')
+
+@pytest.mark.asyncio(loop_scope='session')
 async def test_dh_error_handling(plc_driver):
     """Ensure errors are handled for invalid requests of df registers."""
     with pytest.raises(ValueError, match=r'DH must be in \[1, 500\]'):
