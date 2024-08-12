@@ -180,18 +180,16 @@ class ClickPLC(AsyncioModbusClient):
 
         start_coil = 32 * (start // 100) + start % 100 - 1
         if end is None:
-            count = 1
-        else:
-            if end % 100 == 0 or end % 100 > 16:
-                raise ValueError('X end address must be *01-*16.')
-            if end < 1 or end > 816:
-                raise ValueError('X end address must be in [001, 816].')
-            end_coil = 32 * (end // 100) + end % 100 - 1
-            count = end_coil - start_coil + 1
-
-        coils = await self.read_coils(start_coil, count)
-        if count == 1:
+            coils = await self.read_coils(start_coil, 1)
             return coils.bits[0]
+
+        if end % 100 == 0 or end % 100 > 16:
+            raise ValueError('X end address must be *01-*16.')
+        if end < 1 or end > 816:
+            raise ValueError('X end address must be in [001, 816].')
+        end_coil = 32 * (end // 100) + end % 100 - 1
+        count = end_coil - start_coil + 1
+        coils = await self.read_coils(start_coil, count)
         output = {}
         current = start
         for bit in coils.bits:
@@ -231,18 +229,16 @@ class ClickPLC(AsyncioModbusClient):
 
         start_coil = 8192 + 32 * (start // 100) + start % 100 - 1
         if end is None:
-            count = 1
-        else:
-            if end % 100 == 0 or end % 100 > 16:
-                raise ValueError('Y end address must be *01-*16.')
-            if end < 1 or end > 816:
-                raise ValueError('Y end address must be in [001, 816].')
-            end_coil = 8192 + 32 * (end // 100) + end % 100 - 1
-            count = end_coil - start_coil + 1
-
-        coils = await self.read_coils(start_coil, count)
-        if count == 1:
+            coils = await self.read_coils(start_coil, 1)
             return coils.bits[0]
+
+        if end % 100 == 0 or end % 100 > 16:
+            raise ValueError('Y end address must be *01-*16.')
+        if end < 1 or end > 816:
+            raise ValueError('Y end address must be in [001, 816].')
+        end_coil = 8192 + 32 * (end // 100) + end % 100 - 1
+        count = end_coil - start_coil + 1
+        coils = await self.read_coils(start_coil, count)
         output = {}
         current = start
         for bit in coils.bits:
@@ -270,16 +266,13 @@ class ClickPLC(AsyncioModbusClient):
 
         start_coil = 16384 + start - 1
         if end is None:
-            count = 1
-        else:
-            if end <= start or end > 2000:
-                raise ValueError('C end address must be >start and <=2000.')
-            end_coil = 16384 + end - 1
-            count = end_coil - start_coil + 1
+            return (await self.read_coils(start_coil, 1)).bits[0]
 
+        if end <= start or end > 2000:
+            raise ValueError('C end address must be >start and <=2000.')
+        end_coil = 16384 + end - 1
+        count = end_coil - start_coil + 1
         coils = await self.read_coils(start_coil, count)
-        if count == 1:
-            return coils.bits[0]
         return {f'c{(start + i)}': bit for i, bit in enumerate(coils.bits) if i < count}
 
     async def _get_t(self, start: int, end: int | None) -> dict | bool:
@@ -297,16 +290,14 @@ class ClickPLC(AsyncioModbusClient):
 
         start_coil = 45057 + start - 1
         if end is None:
-            count = 1
-        else:
-            if end <= start or end > 500:
-                raise ValueError('T end address must be >start and <=500.')
-            end_coil = 14555 + end - 1
-            count = end_coil - start_coil + 1
-
-        coils = await self.read_coils(start_coil, count)
-        if count == 1:
+            coils = await self.read_coils(start_coil, 1)
             return coils.bits[0]
+
+        if end <= start or end > 500:
+            raise ValueError('T end address must be >start and <=500.')
+        end_coil = 14555 + end - 1
+        count = end_coil - start_coil + 1
+        coils = await self.read_coils(start_coil, count)
         return {f't{(start + i)}': bit for i, bit in enumerate(coils.bits) if i < count}
 
     async def _get_ct(self, start: int, end: int | None) -> dict | bool:
@@ -324,7 +315,8 @@ class ClickPLC(AsyncioModbusClient):
 
         start_coil = 49152 + start - 1
         if end is None:
-            count = 1
+            coils = await self.read_coils(start_coil, 1)
+            return coils.bits[0]
         else:
             if end <= start or end > 250:
                 raise ValueError('CT end address must be >start and <=250.')
@@ -332,8 +324,6 @@ class ClickPLC(AsyncioModbusClient):
             count = end_coil - start_coil + 1
 
         coils = await self.read_coils(start_coil, count)
-        if count == 1:
-            return coils.bits[0]
         return {f'ct{(start + i)}': bit for i, bit in enumerate(coils.bits) if i < count}
 
     async def _get_ds(self, start: int, end: int | None) -> dict | int:
