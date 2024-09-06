@@ -15,7 +15,7 @@ try:  # pymodbus >= 3.7.0
     from pymodbus.pdu.register_read_message import ReadHoldingRegistersResponse
     from pymodbus.pdu.register_write_message import WriteMultipleRegistersResponse
 except ImportError:
-    from pymodbus.bit_read_message import ReadCoilsResponse, ReadDiscreteInputsResponse  # type: ignore  # noqa: I001
+    from pymodbus.bit_read_message import ReadCoilsResponse, ReadDiscreteInputsResponse  # type: ignore
     from pymodbus.bit_write_message import WriteMultipleCoilsResponse, WriteSingleCoilResponse  # type: ignore
     from pymodbus.register_read_message import ReadHoldingRegistersResponse  # type: ignore
     from pymodbus.register_write_message import WriteMultipleRegistersResponse  # type: ignore

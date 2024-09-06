@@ -119,7 +119,7 @@ class AsyncioModbusClient:
         await self.connectTask
         async with self.lock:
             try:
-                if self.pymodbus32plus:
+                if self.pymodbus32plus:  # noqa: SIM108
                     future = getattr(self.client, method)
                 else:
                     future = getattr(self.client.protocol, method)  # type: ignore[attr-defined]
