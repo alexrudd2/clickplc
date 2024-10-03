@@ -63,8 +63,6 @@ target-version = "py38"
 ignore = [
   "D104",     # Missing docstring in public package
   "D107",     # Missing docstring in __init__
-  "PT001",    # Use `@pytest.fixture()` over `@pytest.fixture`
-  "PT023",    # Use `@pytest.mark.asyncio()` over `@pytest.mark.asyncio
 ]
 
 select = [
