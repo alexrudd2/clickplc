@@ -7,7 +7,6 @@ name = "clickplc"
 version = "0.11.0"
 description="Python driver for AutomationDirect (formerly Koyo) Ethernet ClickPLCs."
 dependencies = [
-  "pymodbus>=2.4.0; python_version == '3.8'",
   "pymodbus>=2.4.0; python_version == '3.9'",
   "pymodbus>=3.0.2,<3.8.0; python_version >= '3.10'",
 ]
@@ -24,7 +23,6 @@ classifiers = [
     "Natural Language :: English",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -57,7 +55,7 @@ packages = ["clickplc"]
 [tool.ruff]
 extend-exclude = ["venv*"]
 line-length = 120
-target-version = "py38"
+target-version = "py310"
 
 [tool.ruff.lint]
 ignore = [
