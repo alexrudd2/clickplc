@@ -39,7 +39,7 @@ test = [
   'pytest-cov',
   'pytest-asyncio',
   'ruff==0.7.2',
-  'types-PyYAML'
+  'types-PyYAML',
 ]
 
 [project.scripts]
