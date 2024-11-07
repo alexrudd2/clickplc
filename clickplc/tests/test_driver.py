@@ -180,6 +180,16 @@ async def test_dd_roundtrip(plc_driver):
     assert await plc_driver.get('dd1000') == 1000
 
 @pytest.mark.asyncio(scope='session')
+async def test_dh_roundtrip(plc_driver):
+    """Confirm dh single ints are read back correctly after being set."""
+    await plc_driver.set('dh1', 1)
+    await plc_driver.set('dh3', [3, 2**16 - 1])
+    expected = {'dh1': 1, 'dh2': 0, 'dh3': 3, 'dh4': 2**16 - 1, 'dh5': 0}
+    assert expected == await plc_driver.get('dh1-dh5')
+    await plc_driver.set('dh500', 500)
+    assert await plc_driver.get('dh500') == 500
+
+@pytest.mark.asyncio(scope='session')
 async def test_txt_roundtrip(plc_driver):
     """Confirm texts are read back correctly after being set."""
     await plc_driver.set('txt1', 'AB')
@@ -265,6 +275,17 @@ async def test_ct_error_handling(plc_driver):
     with pytest.raises(ValueError, match=r'CT end address must be >start and <=250.'):
         await plc_driver.get('ct1-ct251')
 
+@pytest.mark.asyncio(scope='session')
+async def test_dh_error_handling(plc_driver):
+    """Ensure errors are handled for invalid requests of df registers."""
+    with pytest.raises(ValueError, match=r'DH must be in \[1, 500\]'):
+        await plc_driver.get('dh501')
+    with pytest.raises(ValueError, match=r'DH end must be in \[1, 500\]'):
+        await plc_driver.get('dh1-dh501')
+    with pytest.raises(ValueError, match=r'DH must be in \[1, 500\]'):
+        await plc_driver.set('dh501', 1)
+    with pytest.raises(ValueError, match=r'Data list longer than available addresses.'):
+        await plc_driver.set('dh500', [1, 2])
 
 @pytest.mark.asyncio(scope='session')
 async def test_df_error_handling(plc_driver):

@@ -30,9 +30,9 @@ class AsyncioModbusClient:
         self.timeout = timeout
         self._detect_pymodbus_version()
         if self.pymodbus30plus:
-            self.client = AsyncModbusTcpClient(address, timeout=timeout, port=self.port)
+            self.client = AsyncModbusTcpClient(address, timeout=timeout, port=self.port)  # pyright: ignore [reportPossiblyUnboundVariable]
         else:  # 2.x
-            self.client = ReconnectingAsyncioModbusTcpClient()
+            self.client = ReconnectingAsyncioModbusTcpClient()  # pyright: ignore [reportPossiblyUnboundVariable]
         self.lock = asyncio.Lock()
         self.connectTask = asyncio.create_task(self._connect())
 
@@ -57,7 +57,7 @@ class AsyncioModbusClient:
             if self.pymodbus30plus:
                 await asyncio.wait_for(self.client.connect(), timeout=self.timeout)  # 3.x
             else:  # 2.4.x - 2.5.x
-                await self.client.start(host=self.ip, port=self.port)  # type: ignore
+                await self.client.start(host=self.ip, port=self.port)  # type: ignore[attr-defined]
         except Exception:
             raise OSError(f"Could not connect to '{self.ip}'.")
 
@@ -120,10 +120,10 @@ class AsyncioModbusClient:
         await self.connectTask
         async with self.lock:
             try:
-                if self.pymodbus32plus:
+                if self.pymodbus32plus:  # noqa: SIM108
                     future = getattr(self.client, method)
                 else:
-                    future = getattr(self.client.protocol, method)  # type: ignore
+                    future = getattr(self.client.protocol, method)  # type: ignore[attr-defined]
                 return await future(*args, **kwargs)
             except (asyncio.TimeoutError, pymodbus.exceptions.ConnectionException):
                 raise TimeoutError("Not connected to PLC.")
@@ -135,4 +135,4 @@ class AsyncioModbusClient:
         elif self.pymodbus30plus:
             await self.client.close()  # type: ignore  # 3.0.x - 3.2.x
         else:  # 2.4.x - 2.5.x
-            self.client.stop()  # type: ignore
+            self.client.stop()  # type: ignore[attr-defined]
