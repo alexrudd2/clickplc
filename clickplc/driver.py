@@ -685,6 +685,62 @@ class ClickPLC(AsyncioModbusClient):
             await self.write_registers(address, payload, skip_encode=True)
         else:
             await self.write_register(address, _pack([data]), skip_encode=True)
+            
+    async def _set_sd(self, start: int, data: list[int] | int):
+        """Set writable SD registers. Called by `set`.
+
+        SD entries start at Modbus address 61440 (61441 in the Click software's
+        1-indexed notation). Each SD entry takes 16 bits.
+
+        Args:
+            start: Starting SD address (1-indexed as per ClickPLC).
+            data: Single value or list of values to set.
+
+        Raises:
+            ValueError: If an address is not writable or if data list exceeds the
+                allowed writable range.
+
+        Notes:
+            Only the following SD addresses are writable:
+            SD29, SD31, SD32, SD34, SD35, SD36, SD40, SD41, SD42, SD50,
+            SD51, SD60, SD61, SD106, SD107, SD108, SD112, SD113, SD114,
+            SD140, SD141, SD142, SD143, SD144, SD145, SD146, SD147,
+            SD214, SD215
+        """
+        writable_sd_addresses = {
+            29, 31, 32, 34, 35, 36, 40, 41, 42, 50, 51, 60, 61, 106, 107, 108,
+            112, 113, 114, 140, 141, 142, 143, 144, 145, 146, 147, 214, 215
+        }
+
+        def validate_address(address: int):
+            if address not in writable_sd_addresses:
+                raise ValueError(f"SD{address} is not writable. Only specific SD registers are writable.")
+
+        if isinstance(data, list):
+            for idx, value in enumerate(data):
+                validate_address(start + idx)
+        else:
+            validate_address(start)
+
+        address = 61440 + (start - 1)
+
+        def _pack(values: list[int]):
+            builder = BinaryPayloadBuilder(byteorder=self.bigendian,
+                                           wordorder=self.lilendian)
+            for value in values:
+                builder.add_16bit_int(int(value))
+            return builder.build()
+
+        if isinstance(data, list):
+            if len(data) > len(writable_sd_addresses):
+                raise ValueError('Data list contains more elements than writable SD registers.')
+            payload = _pack(data)
+            await self.write_registers(address, payload, skip_encode=True)
+        else:
+            payload = _pack([data])
+            await self.write_register(address, payload, skip_encode=True)
+
+
 
     async def _set_txt(self, start: int, data: str | list[str]):
         """Set TXT registers. Called by `set`.
