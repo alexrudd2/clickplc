@@ -33,6 +33,7 @@ class ClickPLC(AsyncioModbusClient):
         'c': 'bool',     # (C)ontrol relay
         't': 'bool',     # (T)imer
         'ct': 'bool',    # (C)oun(t)er
+        'sc': 'bool',    # (S)ystem (c)ontrol relays
         'ds': 'int16',   # (D)ata register (s)ingle
         'dd': 'int32',   # (D)ata register, (d)ouble
         'dh': 'int16',   # (D)ata register, (h)ex
@@ -325,6 +326,39 @@ class ClickPLC(AsyncioModbusClient):
 
         coils = await self.read_coils(start_coil, count)
         return {f'ct{(start + i)}': bit for i, bit in enumerate(coils.bits) if i < count}
+    
+    async def _get_sc(self, start: int, end: int | None) -> dict | bool:
+        """Read SC addresses. Called by `get`.
+
+        SC entries start at 61440 (61441 in the Click software's 1-indexed
+        notation) and span a total of 1000 bits, ending at 62439.
+
+        Args:
+            start: Starting SC address (1-indexed as per ClickPLC).
+            end: Optional ending SC address (inclusive, 1-indexed).
+
+        Returns:
+            A dictionary of SC values if `end` is provided, or a single bool
+            value if `end` is None.
+
+        Raises:
+            ValueError: If the start or end address is out of range or invalid.
+        """
+        if start < 1 or start > 1000:
+            raise ValueError('SC start address must be in [1, 1000]')
+        if end is not None and (end < start or end > 1000):
+            raise ValueError('SC end address must be in [start, 1000]')
+
+        start_coil = 61440 + (start - 1)  # Modbus coil address for SC
+        if end is None:
+            # Read a single coil
+            return (await self.read_coils(start_coil, 1)).bits[0]
+
+        end_coil = 61440 + (end - 1)
+        count = end_coil - start_coil + 1
+        coils = await self.read_coils(start_coil, count)
+        return {f'sc{start + i}': bit for i, bit in enumerate(coils.bits) if i < count}
+
 
     async def _get_ds(self, start: int, end: int | None) -> dict | int:
         """Read DS registers. Called by `get`.
@@ -558,6 +592,48 @@ class ClickPLC(AsyncioModbusClient):
             await self.write_coils(coil, data)
         else:
             await self.write_coil(coil, data)
+            
+    async def _set_sc(self, start: int, data: list[bool] | bool):
+        """Set SC addresses. Called by `set`.
+
+        SC entries start at 61440 (61441 in the Click software's 1-indexed
+        notation). This continues for 1000 bits.
+
+        Args:
+            start: Starting SC address (1-indexed as per ClickPLC).
+            data: Single value or list of values to set.
+
+        Raises:
+            ValueError: If the start address is out of range or is not writable, 
+                or if the data list exceeds the allowed writable range.
+
+        Notes:
+            Only the following SC addresses are writable:
+            SC50, SC51, SC53, SC55, SC60, SC61, SC65, SC66, SC67, SC75, SC76, SC120, SC121.
+        """
+        writable_sc_addresses = {
+            50, 51, 53, 55, 60, 61, 65, 66, 67, 75, 76, 120, 121
+        }
+
+        if start < 1 or start > 1000:
+            raise ValueError('SC start address must be in [1, 1000]')
+        if isinstance(data, list):
+            if len(data) > 1000 - start + 1:
+                raise ValueError('Data list longer than available SC addresses.')
+            for i in range(len(data)):
+                if (start + i) not in writable_sc_addresses:
+                    raise ValueError(f"SC{start + i} is not writable.")
+        else:
+            if start not in writable_sc_addresses:
+                raise ValueError(f"SC{start} is not writable.")
+
+        coil = 61440 + (start - 1)
+
+        if isinstance(data, list):
+            await self.write_coils(coil, data)
+        else:
+            await self.write_coil(coil, data)
+
 
     async def _set_df(self, start: int, data: list[float] | float):
         """Set DF registers. Called by `set`.
