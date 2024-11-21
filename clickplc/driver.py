@@ -255,7 +255,7 @@ class ClickPLC(AsyncioModbusClient):
         """Read C addresses. Called by `get`.
 
         C entries start at 16384 (16385 in the Click software's 1-indexed
-        notation). This continues for 2000 bits, ending at 18383.
+        notation) and span a total of 2000 bits, ending at 18383.
 
         The response always returns a full byte of data. If you request
         a number of addresses not divisible by 8, it will have extra data. The
@@ -279,7 +279,7 @@ class ClickPLC(AsyncioModbusClient):
         """Read T addresses.
 
         T entries start at 45056 (45057 in the Click software's 1-indexed
-        notation). This continues for 500 bits, ending at 45555.
+        notation) and span a total of 500 bits, ending at 45555.
 
         The response always returns a full byte of data. If you request
         a number of addresses not divisible by 8, it will have extra data. The
@@ -304,7 +304,7 @@ class ClickPLC(AsyncioModbusClient):
         """Read CT addresses.
 
         CT entries start at 49152 (49153 in the Click software's 1-indexed
-        notation). This continues for 250 bits, ending at 49402.
+        notation) and span a total of 250 bits, ending at 49401.
 
         The response always returns a full byte of data. If you request
         a number of addresses not divisible by 8, it will have extra data. The
