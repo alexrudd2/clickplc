@@ -96,6 +96,32 @@ async def test_c_roundtrip(plc_driver):
     assert await plc_driver.get('c2000') is True
 
 @pytest.mark.asyncio(loop_scope='session')
+async def test_sc_roundtrip(plc_driver):
+    """Confirm writable SC bools are read back correctly after being set."""
+    # Test writing to SC50 (_PLC_Mode_Change_to_STOP) to stop PLC mode
+    await plc_driver.set('sc50', True)
+    assert await plc_driver.get('sc50') is True
+
+    # Test writing to SC60 and SC61 (_BT_Disable_Pairing, _BT_Activate_Pairing) to
+    # manage Bluetooth pairing
+    await plc_driver.set('sc60', [True, False])
+    expected = {'sc60': True, 'sc61': False}
+    assert expected == await plc_driver.get('sc60-sc61')
+
+    # Test writing to SC120 (_Network_Time_Request) to start an NTP request
+    await plc_driver.set('sc120', True)
+    assert await plc_driver.get('sc120') is True
+
+    # Test error handling for non-writable SC62 (_BT_Paired_Devices)
+    with pytest.raises(ValueError, match="SC62 is not writable"):
+        await plc_driver.set('sc62', True)
+    
+    # Test error handling for non-writable SC63 (_BT_Pairing_SW_State)
+    with pytest.raises(ValueError, match="SC63 is not writable"):
+        await plc_driver.set('sc63', False)
+
+
+@pytest.mark.asyncio(loop_scope='session')
 async def test_ds_roundtrip(plc_driver):
     """Confirm ds ints are read back correctly after being set."""
     await plc_driver.set('ds1', 1)
@@ -144,6 +170,35 @@ async def test_dh_roundtrip(plc_driver):
     assert expected == await plc_driver.get('dh1-dh5')
     await plc_driver.set('dh500', 500)
     assert await plc_driver.get('dh500') == 500
+    
+@pytest.mark.asyncio(loop_scope='session')
+async def test_sd_roundtrip(plc_driver):
+    """Confirm writable SD ints are read back correctly after being set."""
+    # Test writing to SD29 (_RTC_New_Year) to adjust the RTC year (requires SC53
+    # trigger)
+    await plc_driver.set('sd29', 2024)
+    assert await plc_driver.get('sd29') == 2024
+
+    # Test writing to SD34, SD35, SD36 (_RTC_New_Hour, _RTC_New_Minute, _RTC_New_Second)
+    # to adjust RTC time (requires SC55 trigger)
+    await plc_driver.set('sd34', 12)
+    await plc_driver.set('sd35', [30, 45])  # Minute = 30, Second = 45
+    expected = {'sd34': 12, 'sd35': 30, 'sd36': 45}
+    assert expected == await plc_driver.get('sd34-sd36')
+
+    # Test writing to SD112 (_EIP_Con2_LostCount) to reset lost packets counter for
+    # Ethernet/IP Connection 2
+    await plc_driver.set('sd112', 0)
+    assert await plc_driver.get('sd112') == 0
+
+    # Test error handling for non-writable SD62 (_BT_Paired_Device_Count)
+    with pytest.raises(ValueError, match="SD62 is not writable"):
+        await plc_driver.set('sd62', 5)
+
+    # Test error handling for non-writable SD63 (_SD_Total_Memory_L)
+    with pytest.raises(ValueError, match="SD63 is not writable"):
+        await plc_driver.set('sd63', 500)
+
 
 @pytest.mark.asyncio(loop_scope='session')
 async def test_txt_roundtrip(plc_driver):
@@ -214,6 +269,43 @@ async def test_c_error_handling(plc_driver):
         await plc_driver.set('c2001', True)
     with pytest.raises(ValueError, match=r'Data list longer than available addresses.'):
         await plc_driver.set('c2000', [True, True])
+        
+@pytest.mark.asyncio(loop_scope='session')
+async def test_sc_error_handling(plc_driver):
+    """Ensure errors are handled for invalid requests of SC registers."""
+    # Test valid boundary
+    await plc_driver.set('sc50', True)  # Valid writable address
+    assert await plc_driver.get('sc50') is True
+
+    # Test invalid boundary (below range)
+    with pytest.raises(ValueError, match=r'SC start address must be in \[1, 1000\]'):
+        await plc_driver.set('sc0', True)  # Below valid range
+
+    # Test invalid boundary (above range)
+    with pytest.raises(ValueError, match=r'SC start address must be in \[1, 1000\]'):
+        await plc_driver.set('sc1001', True)  # Above valid range
+
+    # Test valid read-only SC
+    with pytest.raises(ValueError, match=r"SC62 is not writable."):
+        await plc_driver.set('sc62', True)  # Read-only SC
+
+    # Test end address below start address
+    with pytest.raises(ValueError, match=r'SC end address must be >= start and <= 1000.'):
+        await plc_driver.get('sc100-sc50')  # End address less than start address
+
+    # Test invalid range crossing writable boundaries
+    with pytest.raises(ValueError, match=r'SC53 is writable but SC52 is not.'):
+        # Range includes non-writable SC
+        await plc_driver.set('sc52-sc55', [True, True, True, True])  
+
+    # Test data list exceeding writable addresses
+    with pytest.raises(ValueError, match=r'Data list longer than available SC addresses.'):
+        await plc_driver.set('sc50', [True] * 100)  # Exceeds available writable range
+
+    # Test data type mismatch
+    with pytest.raises(ValueError, match=r"Expected sc50 as a bool."):
+        await plc_driver.set('sc50', 123)  # SC expects a bool value
+
 
 @pytest.mark.asyncio(loop_scope='session')
 async def test_t_error_handling(plc_driver):
@@ -294,6 +386,38 @@ async def test_ctd_error_handling(plc_driver):
         await plc_driver.get('ctd251')
     with pytest.raises(ValueError, match=r'CTD end must be in \[1, 250\]'):
         await plc_driver.get('ctd1-ctd251')
+        
+@pytest.mark.asyncio(loop_scope='session')
+async def test_sd_error_handling(plc_driver):
+    """Ensure errors are handled for invalid requests of SD registers."""
+    # Test out-of-range addresses
+    with pytest.raises(ValueError, match=r'SD must be in \[1, 1000\]'):
+        await plc_driver.get('sd1001')  # Above valid range
+    with pytest.raises(ValueError, match=r'SD end must be in \[1, 1000\]'):
+        await plc_driver.get('sd1-sd1001')  # Range includes invalid end address
+    with pytest.raises(ValueError, match=r'SD must be in \[1, 1000\]'):
+        await plc_driver.set('sd1001', 1)  # Above valid range
+
+    # Test writable boundaries
+    with pytest.raises(ValueError, match=r'SD62 is not writable.'):
+        await plc_driver.set('sd62', 1)  # Read-only SD register
+    with pytest.raises(ValueError, match=r'SD63 is not writable.'):
+        await plc_driver.set('sd63', 1)  # Read-only SD register
+
+    # Test data list exceeding writable range
+    with pytest.raises(ValueError, match=r'Data list longer than available addresses.'):
+        await plc_driver.set('sd29', [1] * 100)  # Exceeds writable range
+
+    # Test type mismatch
+    with pytest.raises(ValueError, match=r'Expected sd29 as a int.'):
+        await plc_driver.set('sd29', 'string')  # SD expects an integer value
+    with pytest.raises(ValueError, match=r'Expected sd29 as a int.'):
+        await plc_driver.set('sd29', [1, 'string'])  # SD expects all integers
+
+    # Test valid writable SD
+    await plc_driver.set('sd29', 2024)  # Valid writable address
+    assert await plc_driver.get('sd29') == 2024
+
 
 @pytest.mark.asyncio(loop_scope='session')
 @pytest.mark.parametrize('prefix', ['y', 'c'])
