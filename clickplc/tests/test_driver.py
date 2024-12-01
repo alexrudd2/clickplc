@@ -115,7 +115,7 @@ async def test_sc_roundtrip(plc_driver):
     # Test error handling for non-writable SC62 (_BT_Paired_Devices)
     with pytest.raises(ValueError, match="SC62 is not writable"):
         await plc_driver.set('sc62', True)
-    
+
     # Test error handling for non-writable SC63 (_BT_Pairing_SW_State)
     with pytest.raises(ValueError, match="SC63 is not writable"):
         await plc_driver.set('sc63', False)
@@ -170,7 +170,7 @@ async def test_dh_roundtrip(plc_driver):
     assert expected == await plc_driver.get('dh1-dh5')
     await plc_driver.set('dh500', 500)
     assert await plc_driver.get('dh500') == 500
-    
+
 @pytest.mark.asyncio(loop_scope='session')
 async def test_sd_roundtrip(plc_driver):
     """Confirm writable SD ints are read back correctly after being set."""
@@ -269,7 +269,7 @@ async def test_c_error_handling(plc_driver):
         await plc_driver.set('c2001', True)
     with pytest.raises(ValueError, match=r'Data list longer than available addresses.'):
         await plc_driver.set('c2000', [True, True])
-        
+
 @pytest.mark.asyncio(loop_scope='session')
 async def test_sc_error_handling(plc_driver):
     """Ensure errors are handled for invalid requests of SC registers."""
@@ -296,7 +296,7 @@ async def test_sc_error_handling(plc_driver):
     # Test invalid range crossing writable boundaries
     with pytest.raises(ValueError, match=r'SC53 is writable but SC52 is not.'):
         # Range includes non-writable SC
-        await plc_driver.set('sc52-sc55', [True, True, True, True])  
+        await plc_driver.set('sc52-sc55', [True, True, True, True])
 
     # Test data list exceeding writable addresses
     with pytest.raises(ValueError, match=r'Data list longer than available SC addresses.'):
@@ -386,7 +386,7 @@ async def test_ctd_error_handling(plc_driver):
         await plc_driver.get('ctd251')
     with pytest.raises(ValueError, match=r'CTD end must be in \[1, 250\]'):
         await plc_driver.get('ctd1-ctd251')
-        
+
 @pytest.mark.asyncio(loop_scope='session')
 async def test_sd_error_handling(plc_driver):
     """Ensure errors are handled for invalid requests of SD registers."""
