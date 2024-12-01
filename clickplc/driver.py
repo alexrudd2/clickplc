@@ -113,7 +113,7 @@ class ClickPLC(AsyncioModbusClient):
         category, start_index = start[:i].lower(), int(start[i:])
         end_index = None if end is None else int(end[i:])
 
-        if end_index is not None and end_index < start_index:
+        if end_index is not None and end_index <= start_index:
             raise ValueError("End address must be greater than start address.")
         if category not in self.data_types:
             raise ValueError(f"{category} currently unsupported.")
@@ -346,8 +346,8 @@ class ClickPLC(AsyncioModbusClient):
         """
         if start < 1 or start > 1000:
             raise ValueError('SC start address must be in [1, 1000]')
-        if end is not None and (end < start or end > 1000):
-            raise ValueError('SC end address must be in [start, 1000]')
+        if end is not None and (end <= start or end > 1000):
+            raise ValueError("SC end address must be >= start and <= 1000.")
 
         start_coil = 61440 + (start - 1)  # Modbus coil address for SC
         if end is None:

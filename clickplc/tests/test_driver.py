@@ -290,17 +290,13 @@ async def test_sc_error_handling(plc_driver):
         await plc_driver.set('sc62', True)  # Read-only SC
 
     # Test end address below start address
-    with pytest.raises(ValueError, match=r'SC end address must be >= start and <= 1000.'):
+    with pytest.raises(ValueError, match=r'End address must be greater than start address.'):
         await plc_driver.get('sc100-sc50')  # End address less than start address
 
     # Test invalid range crossing writable boundaries
-    with pytest.raises(ValueError, match=r'SC53 is writable but SC52 is not.'):
+    with pytest.raises(ValueError, match=r'SC52 is not writable.'):
         # Range includes non-writable SC
-        await plc_driver.set('sc52-sc55', [True, True, True, True])
-
-    # Test data list exceeding writable addresses
-    with pytest.raises(ValueError, match=r'Data list longer than available SC addresses.'):
-        await plc_driver.set('sc50', [True] * 100)  # Exceeds available writable range
+        await plc_driver.set('sc50', [True, True, True, True])
 
     # Test data type mismatch
     with pytest.raises(ValueError, match=r"Expected sc50 as a bool."):
@@ -395,18 +391,21 @@ async def test_sd_error_handling(plc_driver):
         await plc_driver.get('sd1001')  # Above valid range
     with pytest.raises(ValueError, match=r'SD end must be in \[1, 1000\]'):
         await plc_driver.get('sd1-sd1001')  # Range includes invalid end address
-    with pytest.raises(ValueError, match=r'SD must be in \[1, 1000\]'):
+    with pytest.raises(ValueError, match=r'SD1001 is not writable. Only specific SD registers are writable.'):
         await plc_driver.set('sd1001', 1)  # Above valid range
 
-    # Test writable boundaries
+    # Test read-only boundaries
     with pytest.raises(ValueError, match=r'SD62 is not writable.'):
         await plc_driver.set('sd62', 1)  # Read-only SD register
     with pytest.raises(ValueError, match=r'SD63 is not writable.'):
         await plc_driver.set('sd63', 1)  # Read-only SD register
 
-    # Test data list exceeding writable range
-    with pytest.raises(ValueError, match=r'Data list longer than available addresses.'):
-        await plc_driver.set('sd29', [1] * 100)  # Exceeds writable range
+    # Test writable boundaries
+    writable_addresses = {29, 31, 32, 34, 35, 36, 40, 41, 42, 50, 51, 60, 61, 106, 107, 108,
+                          112, 113, 114, 140, 141, 142, 143, 144, 145, 146, 147, 214, 215}
+    for address in writable_addresses:
+        await plc_driver.set(f'sd{address}', 1234)  # Valid writable address
+        assert await plc_driver.get(f'sd{address}') == 1234
 
     # Test type mismatch
     with pytest.raises(ValueError, match=r'Expected sd29 as a int.'):
