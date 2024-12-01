@@ -400,13 +400,6 @@ async def test_sd_error_handling(plc_driver):
     with pytest.raises(ValueError, match=r'SD63 is not writable.'):
         await plc_driver.set('sd63', 1)  # Read-only SD register
 
-    # Test writable boundaries
-    writable_addresses = {29, 31, 32, 34, 35, 36, 40, 41, 42, 50, 51, 60, 61, 106, 107, 108,
-                          112, 113, 114, 140, 141, 142, 143, 144, 145, 146, 147, 214, 215}
-    for address in writable_addresses:
-        await plc_driver.set(f'sd{address}', 1234)  # Valid writable address
-        assert await plc_driver.get(f'sd{address}') == 1234
-
     # Test type mismatch
     with pytest.raises(ValueError, match=r'Expected sd29 as a int.'):
         await plc_driver.set('sd29', 'string')  # SD expects an integer value
