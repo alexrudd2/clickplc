@@ -326,7 +326,7 @@ class ClickPLC(AsyncioModbusClient):
 
         coils = await self.read_coils(start_coil, count)
         return {f'ct{(start + i)}': bit for i, bit in enumerate(coils.bits) if i < count}
-    
+
     async def _get_sc(self, start: int, end: int | None) -> dict | bool:
         """Read SC addresses. Called by `get`.
 
@@ -592,7 +592,7 @@ class ClickPLC(AsyncioModbusClient):
             await self.write_coils(coil, data)
         else:
             await self.write_coil(coil, data)
-            
+
     async def _set_sc(self, start: int, data: list[bool] | bool):
         """Set SC addresses. Called by `set`.
 
@@ -604,7 +604,7 @@ class ClickPLC(AsyncioModbusClient):
             data: Single value or list of values to set.
 
         Raises:
-            ValueError: If the start address is out of range or is not writable, 
+            ValueError: If the start address is out of range or is not writable,
                 or if the data list exceeds the allowed writable range.
 
         Notes:
@@ -761,7 +761,7 @@ class ClickPLC(AsyncioModbusClient):
             await self.write_registers(address, payload, skip_encode=True)
         else:
             await self.write_register(address, _pack([data]), skip_encode=True)
-            
+
     async def _set_sd(self, start: int, data: list[int] | int):
         """Set writable SD registers. Called by `set`.
 
