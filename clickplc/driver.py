@@ -612,7 +612,19 @@ class ClickPLC(AsyncioModbusClient):
             SC50, SC51, SC53, SC55, SC60, SC61, SC65, SC66, SC67, SC75, SC76, SC120, SC121.
         """
         writable_sc_addresses = {
-            50, 51, 53, 55, 60, 61, 65, 66, 67, 75, 76, 120, 121
+            50,  # _PLC_Mode_Change_to_STOP
+            51,  # _Watchdog_Timer_Reset
+            53,  # _RTC_Date_Change
+            55,  # _RTC_Time_Change
+            60,  # _BT_Disable_Pairing  (Plus only?)
+            61,  # _BT_Activate_Pairing (Plus only?)
+            65,  # _SD_Eject
+            66,  # _SD_Delete_All
+            67,  # _SD_Copy_System
+            75,  # _WLAN_Reset (Plus only?)
+            76,  # _Sub_CPU_Reset,
+            120, # _Network_Time_Request
+            121, # _Network_Time_DST
         }
 
         if start < 1 or start > 1000:
