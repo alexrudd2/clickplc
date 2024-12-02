@@ -188,7 +188,7 @@ async def test_sd_roundtrip(plc_driver):
         await plc_driver.set('sd63', 500)
 
 @pytest.mark.asyncio(loop_scope='session')
-async def test_sd_set_date(plc_driver):
+async def test_set_date(plc_driver):
     """Test setting the date components (SD29, SD31, SD32) and triggering SC53 to update the RTC date."""
     # Set date values
     await plc_driver.set('sd29', 2024)  # Year
@@ -211,7 +211,7 @@ async def test_sd_set_date(plc_driver):
     assert await plc_driver.get('sd32') == 25
 
 @pytest.mark.asyncio(loop_scope='session')
-async def test_sd_set_time(plc_driver):
+async def test_set_time(plc_driver):
     """Test setting the time components (SD34, SD35, SD36) and triggering SC55 to update the RTC time."""
     # Set time values
     await plc_driver.set('sd34', 12)   # Hour
