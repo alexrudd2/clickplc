@@ -1,4 +1,5 @@
 """Test the driver correctly parses a tags file and responds with correct data."""
+import asyncio
 from unittest import mock
 
 import pytest
@@ -174,20 +175,7 @@ async def test_dh_roundtrip(plc_driver):
 @pytest.mark.asyncio(loop_scope='session')
 async def test_sd_roundtrip(plc_driver):
     """Confirm writable SD ints are read back correctly after being set."""
-    # Test writing to SD29 (_RTC_New_Year) to adjust the RTC year (requires SC53
-    # trigger)
-    await plc_driver.set('sd29', 2024)
-    assert await plc_driver.get('sd29') == 2024
-
-    # Test writing to SD34, SD35, SD36 (_RTC_New_Hour, _RTC_New_Minute, _RTC_New_Second)
-    # to adjust RTC time (requires SC55 trigger)
-    await plc_driver.set('sd34', 12)
-    await plc_driver.set('sd35', [30, 45])  # Minute = 30, Second = 45
-    expected = {'sd34': 12, 'sd35': 30, 'sd36': 45}
-    assert expected == await plc_driver.get('sd34-sd36')
-
-    # Test writing to SD112 (_EIP_Con2_LostCount) to reset lost packets counter for
-    # Ethernet/IP Connection 2
+    # Test writing to SD112 (_EIP_Con2_LostCount) to reset lost packets counter for Ethernet/IP Connection 2
     await plc_driver.set('sd112', 0)
     assert await plc_driver.get('sd112') == 0
 
@@ -199,6 +187,51 @@ async def test_sd_roundtrip(plc_driver):
     with pytest.raises(ValueError, match="SD63 is not writable"):
         await plc_driver.set('sd63', 500)
 
+@pytest.mark.asyncio(loop_scope='session')
+async def test_sd_set_date(plc_driver):
+    """Test setting the date components (SD29, SD31, SD32) and triggering SC53 to update the RTC date."""
+    # Set date values
+    await plc_driver.set('sd29', 2024)  # Year
+    await plc_driver.set('sd31', 12)   # Month
+    await plc_driver.set('sd32', 25)   # Day
+
+    # Trigger the update
+    await plc_driver.set('sc53', True)
+    await asyncio.sleep(1)  # Wait for the update to process
+
+    # Confirm no errors
+    assert not await plc_driver.get('sc54'), "SC54 indicates a date update error."
+
+    # Turn SC53 OFF
+    await plc_driver.set('sc53', False)
+
+    # Verify date components
+    assert await plc_driver.get('sd29') == 2024
+    assert await plc_driver.get('sd31') == 12
+    assert await plc_driver.get('sd32') == 25
+
+@pytest.mark.asyncio(loop_scope='session')
+async def test_sd_set_time(plc_driver):
+    """Test setting the time components (SD34, SD35, SD36) and triggering SC55 to update the RTC time."""
+    # Set time values
+    await plc_driver.set('sd34', 12)   # Hour
+    await plc_driver.set('sd35', 30)   # Minute
+    await plc_driver.set('sd36', 45)   # Second
+
+    # Trigger the update
+    await plc_driver.set('sc55', True)
+    await asyncio.sleep(1)  # Wait for the update to process
+
+    # Confirm no errors
+    assert not await plc_driver.get('sc56'), "SC56 indicates a time update error."
+
+    # Turn SC55 OFF
+    await plc_driver.set('sc55', False)
+
+    # Verify time components
+    assert await plc_driver.get('sd34') == 12
+    assert await plc_driver.get('sd35') == 30
+    assert await plc_driver.get('sd36') == 45
 
 @pytest.mark.asyncio(loop_scope='session')
 async def test_txt_roundtrip(plc_driver):
