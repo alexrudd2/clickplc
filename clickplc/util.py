@@ -57,8 +57,8 @@ class AsyncioModbusClient:
                 await asyncio.wait_for(self.client.connect(), timeout=self.timeout)  # 3.x
             else:  # 2.4.x - 2.5.x
                 await self.client.start(self.ip)  # type: ignore[attr-defined]
-        except Exception:
-            raise OSError(f"Could not connect to '{self.ip}'.")
+        except Exception as e:
+            raise OSError(f"Could not connect to '{self.ip}'.") from e
 
     async def read_coils(self, address: int, count):
         """Read modbus output coils (0 address prefix)."""
@@ -124,8 +124,8 @@ class AsyncioModbusClient:
                 else:
                     future = getattr(self.client.protocol, method)  # type: ignore[attr-defined]
                 return await future(*args, **kwargs)
-            except (asyncio.TimeoutError, pymodbus.exceptions.ConnectionException):
-                raise TimeoutError("Not connected to PLC.")
+            except (asyncio.TimeoutError, pymodbus.exceptions.ConnectionException) as e:
+                raise TimeoutError("Not connected to PLC.") from e
 
     async def _close(self):
         """Close the TCP connection."""

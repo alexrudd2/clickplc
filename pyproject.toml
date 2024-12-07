@@ -37,8 +37,8 @@ test = [
   'mypy==1.13.0',
   'pytest',
   'pytest-cov',
-  'pytest-asyncio',
-  'ruff==0.7.2',
+  'pytest-asyncio>=0.23.8',
+  'ruff==0.8.1',
   'types-PyYAML',
 ]
 
@@ -59,12 +59,13 @@ target-version = "py310"
 
 [tool.ruff.lint]
 ignore = [
-  "D104",     # Missing docstring in public package
-  "D107",     # Missing docstring in __init__
+  "B005",  # FIXME: lstrip()
+  "D104",  # Missing docstring in public package
+  "D107",  # Missing docstring in __init__
 ]
 
 select = [
-    # "B",   # bandit
+    "B",   # flake8-bugbear
     "C",   # complexity
     "D",   # docstrings
     "E",   # pycodestyle errors
