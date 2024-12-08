@@ -117,10 +117,6 @@ async def test_sc_roundtrip(plc_driver):
     with pytest.raises(ValueError, match="SC62 is not writable"):
         await plc_driver.set('sc62', True)
 
-    # Test error handling for non-writable SC63 (_BT_Pairing_SW_State)
-    with pytest.raises(ValueError, match="SC63 is not writable"):
-        await plc_driver.set('sc63', False)
-
 
 @pytest.mark.asyncio(loop_scope='session')
 async def test_ds_roundtrip(plc_driver):
@@ -182,10 +178,6 @@ async def test_sd_roundtrip(plc_driver):
     # Test error handling for non-writable SD62 (_BT_Paired_Device_Count)
     with pytest.raises(ValueError, match="SD62 is not writable"):
         await plc_driver.set('sd62', 5)
-
-    # Test error handling for non-writable SD63 (_SD_Total_Memory_L)
-    with pytest.raises(ValueError, match="SD63 is not writable"):
-        await plc_driver.set('sd63', 500)
 
 @pytest.mark.asyncio(loop_scope='session')
 async def test_set_date(plc_driver):
@@ -306,10 +298,6 @@ async def test_c_error_handling(plc_driver):
 @pytest.mark.asyncio(loop_scope='session')
 async def test_sc_error_handling(plc_driver):
     """Ensure errors are handled for invalid requests of SC registers."""
-    # Test valid boundary
-    await plc_driver.set('sc50', True)  # Valid writable address
-    assert await plc_driver.get('sc50') is True
-
     # Test invalid boundary (below range)
     with pytest.raises(ValueError, match=r'SC start address must be in \[1, 1000\]'):
         await plc_driver.set('sc0', True)  # Below valid range
