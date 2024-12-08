@@ -33,6 +33,7 @@ class ClickPLC(AsyncioModbusClient):
         'c': 'bool',     # (C)ontrol relay
         't': 'bool',     # (T)imer
         'ct': 'bool',    # (C)oun(t)er
+        'sc': 'bool',    # (S)ystem (c)ontrol relay
         'ds': 'int16',   # (D)ata register (s)ingle
         'dd': 'int32',   # (D)ata register, (d)ouble
         'dh': 'int16',   # (D)ata register, (h)ex
@@ -112,7 +113,7 @@ class ClickPLC(AsyncioModbusClient):
         category, start_index = start[:i].lower(), int(start[i:])
         end_index = None if end is None else int(end[i:])
 
-        if end_index is not None and end_index < start_index:
+        if end_index is not None and end_index <= start_index:
             raise ValueError("End address must be greater than start address.")
         if category not in self.data_types:
             raise ValueError(f"{category} currently unsupported.")
@@ -325,6 +326,39 @@ class ClickPLC(AsyncioModbusClient):
 
         coils = await self.read_coils(start_coil, count)
         return {f'ct{(start + i)}': bit for i, bit in enumerate(coils.bits) if i < count}
+
+    async def _get_sc(self, start: int, end: int | None) -> dict | bool:
+        """Read SC addresses. Called by `get`.
+
+        SC entries start at 61440 (61441 in the Click software's 1-indexed
+        notation) and span a total of 1000 bits, ending at 62439.
+
+        Args:
+            start: Starting SC address (1-indexed as per ClickPLC).
+            end: Optional ending SC address (inclusive, 1-indexed).
+
+        Returns:
+            A dictionary of SC values if `end` is provided, or a single bool
+            value if `end` is None.
+
+        Raises:
+            ValueError: If the start or end address is out of range or invalid.
+        """
+        if start < 1 or start > 1000:
+            raise ValueError('SC start address must be in [1, 1000]')
+        if end is not None and (end <= start or end > 1000):
+            raise ValueError("SC end address must be >= start and <= 1000.")
+
+        start_coil = 61440 + (start - 1)  # Modbus coil address for SC
+        if end is None:
+            # Read a single coil
+            return (await self.read_coils(start_coil, 1)).bits[0]
+
+        end_coil = 61440 + (end - 1)
+        count = end_coil - start_coil + 1
+        coils = await self.read_coils(start_coil, count)
+        return {f'sc{start + i}': bit for i, bit in enumerate(coils.bits) if i < count}
+
 
     async def _get_ds(self, start: int, end: int | None) -> dict | int:
         """Read DS registers. Called by `get`.
@@ -559,6 +593,61 @@ class ClickPLC(AsyncioModbusClient):
         else:
             await self.write_coil(coil, data)
 
+    async def _set_sc(self, start: int, data: list[bool] | bool):
+        """Set SC addresses. Called by `set`.
+
+        SC entries start at 61440 (61441 in the Click software's 1-indexed
+        notation). This continues for 1000 bits.
+
+        Args:
+            start: Starting SC address (1-indexed as per ClickPLC).
+            data: Single value or list of values to set.
+
+        Raises:
+            ValueError: If the start address is out of range or is not writable,
+                or if the data list exceeds the allowed writable range.
+
+        Notes:
+            Only the following SC addresses are writable:
+            SC50, SC51, SC53, SC55, SC60, SC61, SC65, SC66, SC67, SC75, SC76, SC120, SC121.
+            (SC50 and SC51 may actually be read-only!)
+        """
+        writable_sc_addresses = {
+            50,  # _PLC_Mode_Change_to_STOP - FIXME: may not be writeable
+            51,  # _Watchdog_Timer_Reset - FIXME: may not be writeable
+            53,  # _RTC_Date_Change
+            55,  # _RTC_Time_Change
+            60,  # _BT_Disable_Pairing  (Plus only?)
+            61,  # _BT_Activate_Pairing (Plus only?)
+            65,  # _SD_Eject
+            66,  # _SD_Delete_All
+            67,  # _SD_Copy_System
+            75,  # _WLAN_Reset (Plus only?)
+            76,  # _Sub_CPU_Reset,
+            120, # _Network_Time_Request
+            121, # _Network_Time_DST
+        }
+
+        if start < 1 or start > 1000:
+            raise ValueError('SC start address must be in [1, 1000]')
+        if isinstance(data, list):
+            if len(data) > 1000 - start + 1:
+                raise ValueError('Data list longer than available SC addresses.')
+            for i in range(len(data)):
+                if (start + i) not in writable_sc_addresses:
+                    raise ValueError(f"SC{start + i} is not writable.")
+        else:
+            if start not in writable_sc_addresses:
+                raise ValueError(f"SC{start} is not writable.")
+
+        coil = 61440 + (start - 1)
+
+        if isinstance(data, list):
+            await self.write_coils(coil, data)
+        else:
+            await self.write_coil(coil, data)
+
+
     async def _set_df(self, start: int, data: list[float] | float):
         """Set DF registers. Called by `set`.
 
@@ -685,6 +774,62 @@ class ClickPLC(AsyncioModbusClient):
             await self.write_registers(address, payload, skip_encode=True)
         else:
             await self.write_register(address, _pack([data]), skip_encode=True)
+
+    async def _set_sd(self, start: int, data: list[int] | int):
+        """Set writable SD registers. Called by `set`.
+
+        SD entries start at Modbus address 61440 (61441 in the Click software's
+        1-indexed notation). Each SD entry takes 16 bits.
+
+        Args:
+            start: Starting SD address (1-indexed as per ClickPLC).
+            data: Single value or list of values to set.
+
+        Raises:
+            ValueError: If an address is not writable or if data list exceeds the
+                allowed writable range.
+
+        Notes:
+            Only the following SD addresses are writable:
+            SD29, SD31, SD32, SD34, SD35, SD36, SD40, SD41, SD42, SD50,
+            SD51, SD60, SD61, SD106, SD107, SD108, SD112, SD113, SD114,
+            SD140, SD141, SD142, SD143, SD144, SD145, SD146, SD147,
+            SD214, SD215
+        """
+        writable_sd_addresses = (
+            29, 31, 32, 34, 35, 36, 40, 41, 42, 50, 51, 60, 61, 106, 107, 108,
+            112, 113, 114, 140, 141, 142, 143, 144, 145, 146, 147, 214, 215
+        )
+
+        def validate_address(address: int):
+            if address not in writable_sd_addresses:
+                raise ValueError(f"SD{address} is not writable. Only specific SD registers are writable.")
+
+        if isinstance(data, list):
+            for idx, _ in enumerate(data):
+                validate_address(start + idx)
+        else:
+            validate_address(start)
+
+        address = 61440 + (start - 1)
+
+        def _pack(values: list[int]):
+            builder = BinaryPayloadBuilder(byteorder=self.bigendian,
+                                           wordorder=self.lilendian)
+            for value in values:
+                builder.add_16bit_int(int(value))
+            return builder.build()
+
+        if isinstance(data, list):
+            if len(data) > len(writable_sd_addresses):
+                raise ValueError('Data list contains more elements than writable SD registers.')
+            payload = _pack(data)
+            await self.write_registers(address, payload, skip_encode=True)
+        else:
+            payload = _pack([data])
+            await self.write_register(address, payload, skip_encode=True)
+
+
 
     async def _set_txt(self, start: int, data: str | list[str]):
         """Set TXT registers. Called by `set`.
