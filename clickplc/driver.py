@@ -33,7 +33,7 @@ class ClickPLC(AsyncioModbusClient):
         'c': 'bool',     # (C)ontrol relay
         't': 'bool',     # (T)imer
         'ct': 'bool',    # (C)oun(t)er
-        'sc': 'bool',    # (S)ystem (c)ontrol relays
+        'sc': 'bool',    # (S)ystem (c)ontrol relay
         'ds': 'int16',   # (D)ata register (s)ingle
         'dd': 'int32',   # (D)ata register, (d)ouble
         'dh': 'int16',   # (D)ata register, (h)ex
@@ -796,17 +796,17 @@ class ClickPLC(AsyncioModbusClient):
             SD140, SD141, SD142, SD143, SD144, SD145, SD146, SD147,
             SD214, SD215
         """
-        writable_sd_addresses = {
+        writable_sd_addresses = (
             29, 31, 32, 34, 35, 36, 40, 41, 42, 50, 51, 60, 61, 106, 107, 108,
             112, 113, 114, 140, 141, 142, 143, 144, 145, 146, 147, 214, 215
-        }
+        )
 
         def validate_address(address: int):
             if address not in writable_sd_addresses:
                 raise ValueError(f"SD{address} is not writable. Only specific SD registers are writable.")
 
         if isinstance(data, list):
-            for idx, value in enumerate(data):
+            for idx, _ in enumerate(data):
                 validate_address(start + idx)
         else:
             validate_address(start)

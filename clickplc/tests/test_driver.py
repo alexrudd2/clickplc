@@ -193,7 +193,7 @@ async def test_set_date(plc_driver):
     await asyncio.sleep(1)  # Wait for the update to process
 
     # Confirm no errors
-    assert not await plc_driver.get('sc54'), "SC54 indicates a date update error."
+    assert await plc_driver.get('sc54') == 0, "SC54 indicates a date update error."
 
     # Turn SC53 OFF
     await plc_driver.set('sc53', False)
@@ -207,16 +207,16 @@ async def test_set_date(plc_driver):
 async def test_set_time(plc_driver):
     """Test setting the time components (SD34, SD35, SD36) and triggering SC55 to update the RTC time."""
     # Set time values
-    await plc_driver.set('sd34', 12)   # Hour
-    await plc_driver.set('sd35', 30)   # Minute
-    await plc_driver.set('sd36', 45)   # Second
+    await plc_driver.set('sd34', 12)  # Hour
+    await plc_driver.set('sd35', 30)  # Minute
+    await plc_driver.set('sd36', 45)  # Second
 
     # Trigger the update
     await plc_driver.set('sc55', True)
     await asyncio.sleep(1)  # Wait for the update to process
 
     # Confirm no errors
-    assert not await plc_driver.get('sc56'), "SC56 indicates a time update error."
+    assert await plc_driver.get('sc56') == 0, "SC56 indicates a time update error."
 
     # Turn SC55 OFF
     await plc_driver.set('sc55', False)
