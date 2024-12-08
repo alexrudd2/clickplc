@@ -99,9 +99,10 @@ async def test_c_roundtrip(plc_driver):
 @pytest.mark.asyncio(loop_scope='session')
 async def test_sc_roundtrip(plc_driver):
     """Confirm writable SC bools are read back correctly after being set."""
+    # FIXME docs say this is writable, but firmware 3.60 says read-only
     # Test writing to SC50 (_PLC_Mode_Change_to_STOP) to stop PLC mode
-    await plc_driver.set('sc50', True)
-    assert await plc_driver.get('sc50') is True
+    # await plc_driver.set('sc50', True)
+    # assert await plc_driver.get('sc50') is True
 
     # Test writing to SC60 and SC61 (_BT_Disable_Pairing, _BT_Activate_Pairing) to
     # manage Bluetooth pairing
@@ -317,7 +318,7 @@ async def test_sc_error_handling(plc_driver):
     # Test invalid range crossing writable boundaries
     with pytest.raises(ValueError, match=r'SC52 is not writable.'):
         # Range includes non-writable SC
-        await plc_driver.set('sc50', [True, True, True, True])
+        await plc_driver.set('sc52', [True, True])
 
     # Test data type mismatch
     with pytest.raises(ValueError, match=r"Expected sc50 as a bool."):
