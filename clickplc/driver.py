@@ -548,7 +548,7 @@ class ClickPLC(AsyncioModbusClient):
             r = r[1:]  # if starting on the last byte of a 16-bit register, discard the first MSB
         return {f'txt{start}-txt{end}': r}
 
-    async def _set_y(self, start: int, data: list[bool] | bool):
+    async def _set_y(self, start: int, data: list[bool]):
         """Set Y addresses. Called by `set`.
 
         For more information on the quirks of Y coils, read the `_get_y`
@@ -560,23 +560,20 @@ class ClickPLC(AsyncioModbusClient):
             raise ValueError('Y start address must be in [001, 816].')
         coil = 8192 + 32 * (start // 100) + start % 100 - 1
 
-        if isinstance(data, list):
-            if len(data) > 16 * (9 - start // 100) - start % 100 + 1:
-                raise ValueError('Data list longer than available addresses.')
-            payload = []
-            if (start % 100) + len(data) > 16:
-                i = 17 - (start % 100)
-                payload += data[:i] + [False] * 16
-                data = data[i:]
-            while len(data) > 16:
-                payload += data[:16] + [False] * 16
-                data = data[16:]
-            payload += data
-            await self.write_coils(coil, payload)
-        else:
-            await self.write_coil(coil, data)
+        if len(data) > 16 * (9 - start // 100) - start % 100 + 1:
+            raise ValueError('Data list longer than available addresses.')
+        payload = []
+        if (start % 100) + len(data) > 16:
+            i = 17 - (start % 100)
+            payload += data[:i] + [False] * 16
+            data = data[i:]
+        while len(data) > 16:
+            payload += data[:16] + [False] * 16
+            data = data[16:]
+        payload += data
+        await self.write_coils(coil, payload)
 
-    async def _set_c(self, start: int, data: list[bool] | bool):
+    async def _set_c(self, start: int, data: list[bool]):
         """Set C addresses. Called by `set`.
 
         For more information on the quirks of C coils, read the `_get_c`
@@ -586,14 +583,11 @@ class ClickPLC(AsyncioModbusClient):
             raise ValueError('C start address must be 1-2000.')
         coil = 16384 + start - 1
 
-        if isinstance(data, list):
-            if len(data) > (2000 - start + 1):
-                raise ValueError('Data list longer than available addresses.')
-            await self.write_coils(coil, data)
-        else:
-            await self.write_coil(coil, data)
+        if len(data) > (2000 - start + 1):
+            raise ValueError('Data list longer than available addresses.')
+        await self.write_coils(coil, data)
 
-    async def _set_sc(self, start: int, data: list[bool] | bool):
+    async def _set_sc(self, start: int, data: list[bool]):
         """Set SC addresses. Called by `set`.
 
         SC entries start at 61440 (61441 in the Click software's 1-indexed
@@ -630,25 +624,18 @@ class ClickPLC(AsyncioModbusClient):
 
         if start < 1 or start > 1000:
             raise ValueError('SC start address must be in [1, 1000]')
-        if isinstance(data, list):
-            if len(data) > 1000 - start + 1:
-                raise ValueError('Data list longer than available SC addresses.')
-            for i in range(len(data)):
-                if (start + i) not in writable_sc_addresses:
-                    raise ValueError(f"SC{start + i} is not writable.")
-        else:
-            if start not in writable_sc_addresses:
-                raise ValueError(f"SC{start} is not writable.")
+        if len(data) > 1000 - start + 1:
+            raise ValueError('Data list longer than available SC addresses.')
+        for i in range(len(data)):
+            if (start + i) not in writable_sc_addresses:
+                raise ValueError(f"SC{start + i} is not writable.")
 
         coil = 61440 + (start - 1)
 
-        if isinstance(data, list):
-            await self.write_coils(coil, data)
-        else:
-            await self.write_coil(coil, data)
+        await self.write_coils(coil, data)
 
 
-    async def _set_df(self, start: int, data: list[float] | float):
+    async def _set_df(self, start: int, data: list[float]):
         """Set DF registers. Called by `set`.
 
         The ClickPLC is little endian, but on registers ("words") instead
@@ -670,15 +657,12 @@ class ClickPLC(AsyncioModbusClient):
                 builder.add_32bit_float(float(value))
             return builder.build()
 
-        if isinstance(data, list):
-            if len(data) > 500 - start + 1:
-                raise ValueError('Data list longer than available addresses.')
-            payload = _pack(data)
-            await self.write_registers(address, payload, skip_encode=True)
-        else:
-            await self.write_register(address, _pack([data]), skip_encode=True)
+        if len(data) > 500 - start + 1:
+            raise ValueError('Data list longer than available addresses.')
+        payload = _pack(data)
+        await self.write_registers(address, payload, skip_encode=True)
 
-    async def _set_ds(self, start: int, data: list[int] | int):
+    async def _set_ds(self, start: int, data: list[int]):
         """Set DS registers. Called by `set`.
 
         See _get_ds for more information.
@@ -694,15 +678,12 @@ class ClickPLC(AsyncioModbusClient):
                 builder.add_16bit_int(int(value))
             return builder.build()
 
-        if isinstance(data, list):
-            if len(data) > 4500 - start + 1:
-                raise ValueError('Data list longer than available addresses.')
-            payload = _pack(data)
-            await self.write_registers(address, payload, skip_encode=True)
-        else:
-            await self.write_register(address, _pack([data]), skip_encode=True)
+        if len(data) > 4500 - start + 1:
+            raise ValueError('Data list longer than available addresses.')
+        payload = _pack(data)
+        await self.write_registers(address, payload, skip_encode=True)
 
-    async def _set_dd(self, start: int, data: list[int] | int):
+    async def _set_dd(self, start: int, data: list[int]):
         """Set DD registers. Called by `set`.
 
         See _get_dd for more information.
@@ -718,15 +699,12 @@ class ClickPLC(AsyncioModbusClient):
                 builder.add_32bit_int(int(value))
             return builder.build()
 
-        if isinstance(data, list):
-            if len(data) > 1000 - start + 1:
-                raise ValueError('Data list longer than available addresses.')
-            payload = _pack(data)
-            await self.write_registers(address, payload, skip_encode=True)
-        else:
-            await self.write_register(address, _pack([data]), skip_encode=True)
+        if len(data) > 1000 - start + 1:
+            raise ValueError('Data list longer than available addresses.')
+        payload = _pack(data)
+        await self.write_registers(address, payload, skip_encode=True)
 
-    async def _set_dh(self, start: int, data: list[int] | int):
+    async def _set_dh(self, start: int, data: list[int]):
         """Set DH registers. Called by `set`.
 
         See _get_dh for more information.
@@ -742,16 +720,13 @@ class ClickPLC(AsyncioModbusClient):
                 builder.add_16bit_uint(int(value))
             return builder.build()
 
-        if isinstance(data, list):
-            if len(data) > 500 - start + 1:
-                raise ValueError('Data list longer than available addresses.')
-            payload = _pack(data)
-            await self.write_registers(address, payload, skip_encode=True)
-        else:
-            await self.write_register(address, _pack([data]), skip_encode=True)
+        if len(data) > 500 - start + 1:
+            raise ValueError('Data list longer than available addresses.')
+        payload = _pack(data)
+        await self.write_registers(address, payload, skip_encode=True)
 
 
-    async def _set_td(self, start: int, data: list[int] | int):
+    async def _set_td(self, start: int, data: list[int]):
         """Set TD registers. Called by `set`.
 
         See _get_td for more information.
@@ -767,15 +742,12 @@ class ClickPLC(AsyncioModbusClient):
                 builder.add_16bit_int(int(value))
             return builder.build()
 
-        if isinstance(data, list):
-            if len(data) > 500 - start + 1:
-                raise ValueError('Data list longer than available addresses.')
-            payload = _pack(data)
-            await self.write_registers(address, payload, skip_encode=True)
-        else:
-            await self.write_register(address, _pack([data]), skip_encode=True)
+        if len(data) > 500 - start + 1:
+            raise ValueError('Data list longer than available addresses.')
+        payload = _pack(data)
+        await self.write_registers(address, payload, skip_encode=True)
 
-    async def _set_sd(self, start: int, data: list[int] | int):
+    async def _set_sd(self, start: int, data: list[int]):
         """Set writable SD registers. Called by `set`.
 
         SD entries start at Modbus address 61440 (61441 in the Click software's
@@ -804,12 +776,8 @@ class ClickPLC(AsyncioModbusClient):
         def validate_address(address: int):
             if address not in writable_sd_addresses:
                 raise ValueError(f"SD{address} is not writable. Only specific SD registers are writable.")
-
-        if isinstance(data, list):
-            for idx, _ in enumerate(data):
-                validate_address(start + idx)
-        else:
-            validate_address(start)
+        for idx, _ in enumerate(data):
+            validate_address(start + idx)
 
         address = 61440 + (start - 1)
 
@@ -820,18 +788,14 @@ class ClickPLC(AsyncioModbusClient):
                 builder.add_16bit_int(int(value))
             return builder.build()
 
-        if isinstance(data, list):
-            if len(data) > len(writable_sd_addresses):
-                raise ValueError('Data list contains more elements than writable SD registers.')
-            payload = _pack(data)
-            await self.write_registers(address, payload, skip_encode=True)
-        else:
-            payload = _pack([data])
-            await self.write_register(address, payload, skip_encode=True)
+        if len(data) > len(writable_sd_addresses):
+            raise ValueError('Data list contains more elements than writable SD registers.')
+        payload = _pack(data)
+        await self.write_registers(address, payload, skip_encode=True)
 
 
 
-    async def _set_txt(self, start: int, data: str | list[str]):
+    async def _set_txt(self, start: int, data: list[str]):
         """Set TXT registers. Called by `set`.
 
         See _get_txt for more information.
@@ -848,7 +812,6 @@ class ClickPLC(AsyncioModbusClient):
                 builder.add_8bit_uint(ord(values[i + 0]))
             return builder.build()
 
-        assert isinstance(data, list)
         if len(data) > 1000 - start + 1:
             raise ValueError('Data list longer than available addresses.')
         string = data[0]

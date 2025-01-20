@@ -11,12 +11,12 @@ from unittest.mock import MagicMock
 
 try:  # pymodbus >= 3.7.0
     from pymodbus.pdu.bit_read_message import ReadCoilsResponse, ReadDiscreteInputsResponse
-    from pymodbus.pdu.bit_write_message import WriteMultipleCoilsResponse, WriteSingleCoilResponse
+    from pymodbus.pdu.bit_write_message import WriteMultipleCoilsResponse
     from pymodbus.pdu.register_read_message import ReadHoldingRegistersResponse
     from pymodbus.pdu.register_write_message import WriteMultipleRegistersResponse
 except ImportError:
     from pymodbus.bit_read_message import ReadCoilsResponse, ReadDiscreteInputsResponse  # type: ignore
-    from pymodbus.bit_write_message import WriteMultipleCoilsResponse, WriteSingleCoilResponse  # type: ignore
+    from pymodbus.bit_write_message import WriteMultipleCoilsResponse  # type: ignore
     from pymodbus.register_read_message import ReadHoldingRegistersResponse  # type: ignore
     from pymodbus.register_write_message import WriteMultipleRegistersResponse  # type: ignore
 from pymodbus.constants import Endian
@@ -64,10 +64,6 @@ class ClickPLC(realClickPLC):
             return ReadHoldingRegistersResponse([int.from_bytes(self._registers[address + i],
                                                                 byteorder='big')
                                                  for i in range(count)])
-        elif method == 'write_coil':
-            address, data = args
-            self._coils[address] = data
-            return WriteSingleCoilResponse(address, data)
         elif method == 'write_coils':
             address, data = args
             for i, d in enumerate(data):
