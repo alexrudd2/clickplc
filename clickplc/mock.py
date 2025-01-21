@@ -4,21 +4,30 @@ Python mock driver for AutomationDirect (formerly Koyo) ClickPLCs.
 Uses local storage instead of remote communications.
 
 Distributed under the GNU General Public License v2
-Copyright (C) 2021 NuMat Technologies
 """
 from collections import defaultdict
 from unittest.mock import MagicMock
 
-try:  # pymodbus >= 3.7.0
-    from pymodbus.pdu.bit_read_message import ReadCoilsResponse, ReadDiscreteInputsResponse
-    from pymodbus.pdu.bit_write_message import WriteMultipleCoilsResponse
-    from pymodbus.pdu.register_read_message import ReadHoldingRegistersResponse
-    from pymodbus.pdu.register_write_message import WriteMultipleRegistersResponse
+try:
+    from pymodbus.pdu.bit_message import (
+        ReadCoilsResponse,
+        ReadDiscreteInputsResponse,
+        WriteMultipleCoilsResponse,
+    )
+    from pymodbus.pdu.register_message import ReadHoldingRegistersResponse, WriteMultipleRegistersResponse
+    pymodbus38plus = True
 except ImportError:
-    from pymodbus.bit_read_message import ReadCoilsResponse, ReadDiscreteInputsResponse  # type: ignore
-    from pymodbus.bit_write_message import WriteMultipleCoilsResponse  # type: ignore
-    from pymodbus.register_read_message import ReadHoldingRegistersResponse  # type: ignore
-    from pymodbus.register_write_message import WriteMultipleRegistersResponse  # type: ignore
+    pymodbus38plus = False
+    try:  # pymodbus 3.7.x
+        from pymodbus.pdu.bit_read_message import ReadCoilsResponse, ReadDiscreteInputsResponse  # type: ignore
+        from pymodbus.pdu.bit_write_message import WriteMultipleCoilsResponse  # type: ignore
+        from pymodbus.pdu.register_read_message import ReadHoldingRegistersResponse  # type: ignore
+        from pymodbus.pdu.register_write_message import WriteMultipleRegistersResponse  # type: ignore
+    except ImportError:
+        from pymodbus.bit_read_message import ReadCoilsResponse, ReadDiscreteInputsResponse  # type: ignore
+        from pymodbus.bit_write_message import WriteMultipleCoilsResponse  # type: ignore
+        from pymodbus.register_read_message import ReadHoldingRegistersResponse  # type: ignore
+        from pymodbus.register_write_message import WriteMultipleRegistersResponse  # type: ignore
 from pymodbus.constants import Endian
 
 from clickplc.driver import ClickPLC as realClickPLC
@@ -51,16 +60,24 @@ class ClickPLC(realClickPLC):
         self.bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type: ignore[attr-defined]
         self.lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type: ignore[attr-defined]
 
-    async def _request(self, method, address, count=0, values=(), **kwargs):
+    async def _request(self, method, address, count=0, values=(), **kwargs):  # noqa: C901
         if method == 'read_coils':
-            return ReadCoilsResponse([self._coils[address + i] for i in range(count)])
+            bits = [self._coils[address + i] for i in range(count)]
+            if pymodbus38plus:
+                return ReadCoilsResponse(bits = bits)
+            return ReadCoilsResponse(bits)  # type: ignore[arg-type]
         if method == 'read_discrete_inputs':
-            return ReadDiscreteInputsResponse([self._discrete_inputs[address + i]
-                                               for i in range(count)])
+            bits = bits = [self._discrete_inputs[address + i]
+                           for i in range(count)]
+            if pymodbus38plus:
+                return ReadDiscreteInputsResponse(bits = bits)
+            return ReadDiscreteInputsResponse(bits)  # type: ignore[arg-type]
         elif method == 'read_holding_registers':
-            return ReadHoldingRegistersResponse([int.from_bytes(self._registers[address + i],
-                                                                byteorder='big')
-                                                 for i in range(count)])
+            registers = [int.from_bytes(self._registers[address + i], byteorder='big')
+                         for i in range(count)]
+            if pymodbus38plus:
+                return ReadHoldingRegistersResponse(registers = registers)
+            return ReadHoldingRegistersResponse(registers)  #type: ignore[arg-type]
         elif method == 'write_coils':
             for i, d in enumerate(values):
                 self._coils[address + i] = d
