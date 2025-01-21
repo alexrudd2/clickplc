@@ -51,27 +51,22 @@ class ClickPLC(realClickPLC):
         self.bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type: ignore[attr-defined]
         self.lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type: ignore[attr-defined]
 
-    async def _request(self, method, *args, **kwargs):
+    async def _request(self, method, address, count=0, values=(), **kwargs):
         if method == 'read_coils':
-            address, count = args
             return ReadCoilsResponse([self._coils[address + i] for i in range(count)])
         if method == 'read_discrete_inputs':
-            address, count = args
             return ReadDiscreteInputsResponse([self._discrete_inputs[address + i]
                                                for i in range(count)])
         elif method == 'read_holding_registers':
-            address, count = args
             return ReadHoldingRegistersResponse([int.from_bytes(self._registers[address + i],
                                                                 byteorder='big')
                                                  for i in range(count)])
         elif method == 'write_coils':
-            address, data = args
-            for i, d in enumerate(data):
+            for i, d in enumerate(values):
                 self._coils[address + i] = d
-            return WriteMultipleCoilsResponse(address, data)
+            return WriteMultipleCoilsResponse(address, values)
         elif method == 'write_registers':
-            address, data = args
-            for i, d in enumerate(data):
+            for i, d in enumerate(values):
                 self._registers[address + i] = d
-            return WriteMultipleRegistersResponse(address, data)
+            return WriteMultipleRegistersResponse(address, values)
         return NotImplementedError(f'Unrecognised method: {method}')
