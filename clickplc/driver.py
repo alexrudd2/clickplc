@@ -10,12 +10,13 @@ from __future__ import annotations
 import copy
 import csv
 import pydoc
+import struct
 from collections import defaultdict
 from string import digits
 from typing import Any, ClassVar, overload
 
 from pymodbus.constants import Endian
-from pymodbus.payload import BinaryPayloadBuilder, BinaryPayloadDecoder
+from pymodbus.payload import BinaryPayloadDecoder
 
 from clickplc.util import AsyncioModbusClient
 
@@ -562,16 +563,16 @@ class ClickPLC(AsyncioModbusClient):
 
         if len(data) > 16 * (9 - start // 100) - start % 100 + 1:
             raise ValueError('Data list longer than available addresses.')
-        payload = []
+        values = []
         if (start % 100) + len(data) > 16:
             i = 17 - (start % 100)
-            payload += data[:i] + [False] * 16
+            values += data[:i] + [False] * 16
             data = data[i:]
         while len(data) > 16:
-            payload += data[:16] + [False] * 16
+            values += data[:16] + [False] * 16
             data = data[16:]
-        payload += data
-        await self.write_coils(coil, payload)
+        values += data
+        await self.write_coils(coil, values)
 
     async def _set_c(self, start: int, data: list[bool]):
         """Set C addresses. Called by `set`.
@@ -595,7 +596,7 @@ class ClickPLC(AsyncioModbusClient):
 
         Args:
             start: Starting SC address (1-indexed as per ClickPLC).
-            data: Single value or list of values to set.
+            data: List of values to set.
 
         Raises:
             ValueError: If the start address is out of range or is not writable,
@@ -644,23 +645,22 @@ class ClickPLC(AsyncioModbusClient):
             Hex: 3dcc cccd (IEEE-754 float32)
             Click: -1.076056E8
             Hex: cccd 3dcc
-        To fix, we need to flip the registers. Implemented below in `pack`.
+        To fix, we need to convert the floats into pairs of unsigned ints, which have the same
+        bytes as the float.
         """
         if start < 1 or start > 500:
             raise ValueError('DF must be in [1, 500]')
         address = 28672 + 2 * (start - 1)
 
-        def _pack(values: list[float]):
-            builder = BinaryPayloadBuilder(byteorder=self.bigendian,
-                                           wordorder=self.lilendian)
-            for value in values:
-                builder.add_32bit_float(float(value))
-            return builder.build()
-
         if len(data) > 500 - start + 1:
             raise ValueError('Data list longer than available addresses.')
-        payload = _pack(data)
-        await self.write_registers(address, payload, skip_encode=True)
+
+        values: list[bytes] = []
+        for datum in data:
+            packed_4_bytes = struct.pack('<f', datum)  # Little-endian single-precision float
+            values.extend(struct.unpack('<HH', packed_4_bytes))  # unpack 2x uint_16
+
+        await self.write_registers(address, values)
 
     async def _set_ds(self, start: int, data: list[int]):
         """Set DS registers. Called by `set`.
@@ -670,18 +670,13 @@ class ClickPLC(AsyncioModbusClient):
         if start < 1 or start > 4500:
             raise ValueError('DS must be in [1, 4500]')
         address = (start - 1)
-
-        def _pack(values: list[int]):
-            builder = BinaryPayloadBuilder(byteorder=self.bigendian,
-                                           wordorder=self.lilendian)
-            for value in values:
-                builder.add_16bit_int(int(value))
-            return builder.build()
-
         if len(data) > 4500 - start + 1:
             raise ValueError('Data list longer than available addresses.')
-        payload = _pack(data)
-        await self.write_registers(address, payload, skip_encode=True)
+
+        # since pymodbus is expecting list[uint_16], cast from int_16
+        values = [d & 0xffff for d in data]  # two's complement
+
+        await self.write_registers(address, values)
 
     async def _set_dd(self, start: int, data: list[int]):
         """Set DD registers. Called by `set`.
@@ -692,17 +687,17 @@ class ClickPLC(AsyncioModbusClient):
             raise ValueError('DD must be in [1, 1000]')
         address = 16384 + 2 * (start - 1)
 
-        def _pack(values: list[int]):
-            builder = BinaryPayloadBuilder(byteorder=self.bigendian,
-                                           wordorder=self.lilendian)
-            for value in values:
-                builder.add_32bit_int(int(value))
-            return builder.build()
-
         if len(data) > 1000 - start + 1:
             raise ValueError('Data list longer than available addresses.')
-        payload = _pack(data)
-        await self.write_registers(address, payload, skip_encode=True)
+
+        # pymodbus is expecting list[uint_16]
+        # convert each 32-bit signed int into a uint_16 pair (little-endian) with the same byte value
+        values: list[bytes] = []
+        for datum in data:
+            packed_4_bytes = struct.pack('<i', datum)  # pack int_32
+            values.extend(struct.unpack('<HH', packed_4_bytes))  # unpack 2x uint_16
+
+        await self.write_registers(address, values)
 
     async def _set_dh(self, start: int, data: list[int]):
         """Set DH registers. Called by `set`.
@@ -713,17 +708,9 @@ class ClickPLC(AsyncioModbusClient):
             raise ValueError('DH must be in [1, 500]')
         address = 24576 + (start - 1)
 
-        def _pack(values: list[int]):
-            builder = BinaryPayloadBuilder(byteorder=self.bigendian,
-                                           wordorder=self.lilendian)
-            for value in values:
-                builder.add_16bit_uint(int(value))
-            return builder.build()
-
         if len(data) > 500 - start + 1:
             raise ValueError('Data list longer than available addresses.')
-        payload = _pack(data)
-        await self.write_registers(address, payload, skip_encode=True)
+        await self.write_registers(address, values=data)
 
 
     async def _set_td(self, start: int, data: list[int]):
@@ -735,17 +722,13 @@ class ClickPLC(AsyncioModbusClient):
             raise ValueError('TD must be in [1, 500]')
         address = 45056 + (start - 1)
 
-        def _pack(values: list[int]):
-            builder = BinaryPayloadBuilder(byteorder=self.bigendian,
-                                           wordorder=self.lilendian)
-            for value in values:
-                builder.add_16bit_int(int(value))
-            return builder.build()
-
         if len(data) > 500 - start + 1:
             raise ValueError('Data list longer than available addresses.')
-        payload = _pack(data)
-        await self.write_registers(address, payload, skip_encode=True)
+
+        # since pymodbus is expecting list[uint_16], cast from int_16
+        values = [d & 0xffff for d in data]  # two's complement
+
+        await self.write_registers(address, values)
 
     async def _set_sd(self, start: int, data: list[int]):
         """Set writable SD registers. Called by `set`.
@@ -781,18 +764,13 @@ class ClickPLC(AsyncioModbusClient):
 
         address = 61440 + (start - 1)
 
-        def _pack(values: list[int]):
-            builder = BinaryPayloadBuilder(byteorder=self.bigendian,
-                                           wordorder=self.lilendian)
-            for value in values:
-                builder.add_16bit_int(int(value))
-            return builder.build()
-
         if len(data) > len(writable_sd_addresses):
             raise ValueError('Data list contains more elements than writable SD registers.')
-        payload = _pack(data)
-        await self.write_registers(address, payload, skip_encode=True)
 
+        # since pymodbus is expecting list[uint_16], cast from int_16
+        values = [d & 0xffff for d in data]  # two's complement
+
+        await self.write_registers(address, values)
 
 
     async def _set_txt(self, start: int, data: list[str]):
@@ -803,14 +781,6 @@ class ClickPLC(AsyncioModbusClient):
         if start < 1 or start > 1000:
             raise ValueError('TXT must be in [1, 1000]')
         address = 36864 + (start - 1) // 2
-
-        def _pack(values: str):
-            assert len(values) % 2 == 0
-            builder = BinaryPayloadBuilder()  # endianness irrelevant; manual packing
-            for i in range(0, len(values), 2):
-                builder.add_8bit_uint(ord(values[i + 1]))
-                builder.add_8bit_uint(ord(values[i + 0]))
-            return builder.build()
 
         if len(data) > 1000 - start + 1:
             raise ValueError('Data list longer than available addresses.')
@@ -824,8 +794,12 @@ class ClickPLC(AsyncioModbusClient):
                 string += await self._get_txt(start=start + 1, end=None)
             else:
                 string = await self._get_txt(start=start - 1, end=None) + string
-        payload = _pack(string)
-        await self.write_registers(address, payload, skip_encode=True)
+
+        # every 2 8-bit characters become one 16-bit modbus register
+        values = [value for value,                               # note the comma to index the tuple
+                  in struct.iter_unpack('<H', string.encode())]  # '<H' is little-endian uint_16
+
+        await self.write_registers(address, values)
 
     def _load_tags(self, tag_filepath: str) -> dict:
         """Load tags from file path.
