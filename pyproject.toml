@@ -8,7 +8,7 @@ version = "0.12.0"
 description="Python driver for AutomationDirect (formerly Koyo) Ethernet ClickPLCs."
 dependencies = [
   "pymodbus>=2.4.0; python_version == '3.9'",
-  "pymodbus>=3.0.2,<3.8.0; python_version >= '3.10'",
+  "pymodbus>=3.0.2,<3.9.0; python_version >= '3.10'",
 ]
 authors = [
   {name = "Pat Fuller", email = "patrickfuller@gmail.com" },
@@ -34,11 +34,11 @@ classifiers = [
 
 [project.optional-dependencies]
 test = [
-  'mypy==1.13.0',
+  'mypy==1.14.1',
   'pytest',
   'pytest-cov',
-  'pytest-asyncio',
-  'ruff==0.7.2',
+  'pytest-asyncio>=0.23.8',
+  'ruff==0.8.4',
   'types-PyYAML',
   'pyserial-asyncio>=0.4.0; python_version == "3.9"',  # pymodbus 2.x
 ]
@@ -60,12 +60,13 @@ target-version = "py310"
 
 [tool.ruff.lint]
 ignore = [
-  "D104",     # Missing docstring in public package
-  "D107",     # Missing docstring in __init__
+  "B005",  # FIXME: lstrip()
+  "D104",  # Missing docstring in public package
+  "D107",  # Missing docstring in __init__
 ]
 
 select = [
-    # "B",   # bandit
+    "B",   # flake8-bugbear
     "C",   # complexity
     "D",   # docstrings
     "E",   # pycodestyle errors
@@ -96,3 +97,4 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 addopts = "--cov=clickplc"
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"

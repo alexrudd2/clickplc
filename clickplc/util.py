@@ -58,12 +58,12 @@ class AsyncioModbusClient:
                 await asyncio.wait_for(self.client.connect(), timeout=self.timeout)  # 3.x
             else:  # 2.4.x - 2.5.x
                 await self.client.start(host=self.ip, port=self.port)  # type: ignore[attr-defined]
-        except Exception:
-            raise OSError(f"Could not connect to '{self.ip}'.")
+        except Exception as e:
+            raise OSError(f"Could not connect to '{self.ip}'.") from e
 
     async def read_coils(self, address: int, count):
         """Read modbus output coils (0 address prefix)."""
-        return await self._request('read_coils', address, count)
+        return await self._request('read_coils', address=address, count=count)
 
     async def read_registers(self, address: int, count):
         """Read modbus registers.
@@ -74,26 +74,18 @@ class AsyncioModbusClient:
         """
         registers = []
         while count > 124:
-            r = await self._request('read_holding_registers', address, 124)
+            r = await self._request('read_holding_registers', address=address, count=124)
             registers += r.registers
             address, count = address + 124, count - 124
-        r = await self._request('read_holding_registers', address, count)
+        r = await self._request('read_holding_registers', address=address, count=count)
         registers += r.registers
         return registers
 
-    async def write_coil(self, address: int, value):
-        """Write modbus coils."""
-        await self._request('write_coil', address, value)
-
     async def write_coils(self, address: int, values):
         """Write modbus coils."""
-        await self._request('write_coils', address, values)
+        await self._request('write_coils', address=address, values=values)
 
-    async def write_register(self, address: int, value, skip_encode=False):
-        """Write a modbus register."""
-        await self._request('write_register', address, value, skip_encode=skip_encode)
-
-    async def write_registers(self, address: int, values, skip_encode=False):
+    async def write_registers(self, address: int, values):
         """Write modbus registers.
 
         The Modbus protocol doesn't allow requests longer than 250 bytes
@@ -101,11 +93,9 @@ class AsyncioModbusClient:
         chunking larger requests.
         """
         while len(values) > 62:
-            await self._request('write_registers',
-                                address, values, skip_encode=skip_encode)
+            await self._request('write_registers', address=address, values=values)
             address, values = address + 124, values[62:]
-        await self._request('write_registers',
-                            address, values, skip_encode=skip_encode)
+        await self._request('write_registers', address=address, values=values)
 
     async def _request(self, method, *args, **kwargs):
         """Send a request to the device and awaits a response.
@@ -125,8 +115,8 @@ class AsyncioModbusClient:
                 else:
                     future = getattr(self.client.protocol, method)  # type: ignore[attr-defined]
                 return await future(*args, **kwargs)
-            except (asyncio.TimeoutError, pymodbus.exceptions.ConnectionException):
-                raise TimeoutError("Not connected to PLC.")
+            except (asyncio.TimeoutError, pymodbus.exceptions.ConnectionException) as e:
+                raise TimeoutError("Not connected to PLC.") from e
 
     async def _close(self):
         """Close the TCP connection."""
