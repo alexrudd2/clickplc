@@ -415,15 +415,15 @@ async def test_sd_error_handling(plc_driver):
         await plc_driver.set('sd1001', 1)  # Above valid range
 
     # Test read-only boundaries
-    with pytest.raises(ValueError, match=r'SD62 is not writable.'):
+    with pytest.raises(ValueError, match=r'SD62 is not writable'):
         await plc_driver.set('sd62', 1)  # Read-only SD register
-    with pytest.raises(ValueError, match=r'SD63 is not writable.'):
+    with pytest.raises(ValueError, match=r'SD63 is not writable'):
         await plc_driver.set('sd63', 1)  # Read-only SD register
 
     # Test type mismatch
-    with pytest.raises(ValueError, match=r'Expected sd29 as a int.'):
+    with pytest.raises(ValueError, match=r'Expected sd29 as a int'):
         await plc_driver.set('sd29', 'string')  # SD expects an integer value
-    with pytest.raises(ValueError, match=r'Expected sd29 as a int.'):
+    with pytest.raises(ValueError, match=r'Expected sd29 as a int'):
         await plc_driver.set('sd29', [1, 'string'])  # SD expects all integers
 
     # Test valid writable SD
@@ -434,27 +434,27 @@ async def test_sd_error_handling(plc_driver):
 @pytest.mark.parametrize('prefix', ['y', 'c'])
 async def test_bool_typechecking(plc_driver, prefix):
     """Ensure errors are handled for set() requests that should be bools."""
-    with pytest.raises(ValueError, match='Expected .+ as a bool'):
+    with pytest.raises(ValueError, match=r'Expected .+ as a bool'):
         await plc_driver.set(f'{prefix}1', 1)
-    with pytest.raises(ValueError, match='Expected .+ as a bool'):
+    with pytest.raises(ValueError, match=r'Expected .+ as a bool'):
         await plc_driver.set(f'{prefix}1', [1.0, 1])
 
 @pytest.mark.asyncio(loop_scope='session')
 async def test_df_typechecking(plc_driver):
     """Ensure errors are handled for set() requests that should be floats."""
     await plc_driver.set('df1', 1)
-    with pytest.raises(ValueError, match='Expected .+ as a float'):
+    with pytest.raises(ValueError, match=r'Expected .+ as a float'):
         await plc_driver.set('df1', True)
-    with pytest.raises(ValueError, match='Expected .+ as a float'):
+    with pytest.raises(ValueError, match=r'Expected .+ as a float'):
         await plc_driver.set('df1', [True, True])
 
 @pytest.mark.asyncio(loop_scope='session')
 @pytest.mark.parametrize('prefix', ['ds', 'dd'])
 async def test_ds_dd_typechecking(plc_driver, prefix):
     """Ensure errors are handled for set() requests that should be ints."""
-    with pytest.raises(ValueError, match='Expected .+ as a int'):
+    with pytest.raises(ValueError, match=r'Expected .+ as a int'):
         await plc_driver.set(f'{prefix}1', 1.0)
-    with pytest.raises(ValueError, match='Expected .+ as a int'):
+    with pytest.raises(ValueError, match=r'Expected .+ as a int'):
         await plc_driver.set(f'{prefix}1', True)
-    with pytest.raises(ValueError, match='Expected .+ as a int'):
+    with pytest.raises(ValueError, match=r'Expected .+ as a int'):
         await plc_driver.set(f'{prefix}1', [True, True])
