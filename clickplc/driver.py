@@ -360,7 +360,6 @@ class ClickPLC(AsyncioModbusClient):
         coils = await self.read_coils(start_coil, count)
         return {f'sc{start + i}': bit for i, bit in enumerate(coils.bits) if i < count}
 
-
     async def _get_ds(self, start: int, end: int | None) -> dict | int:
         """Read DS registers. Called by `get`.
 
@@ -607,21 +606,21 @@ class ClickPLC(AsyncioModbusClient):
             SC50, SC51, SC53, SC55, SC60, SC61, SC65, SC66, SC67, SC75, SC76, SC120, SC121.
             (SC50 and SC51 may actually be read-only!)
         """
-        writable_sc_addresses = {
-            50,  # _PLC_Mode_Change_to_STOP - FIXME: may not be writeable
-            51,  # _Watchdog_Timer_Reset - FIXME: may not be writeable
-            53,  # _RTC_Date_Change
-            55,  # _RTC_Time_Change
-            60,  # _BT_Disable_Pairing  (Plus only?)
-            61,  # _BT_Activate_Pairing (Plus only?)
-            65,  # _SD_Eject
-            66,  # _SD_Delete_All
-            67,  # _SD_Copy_System
-            75,  # _WLAN_Reset (Plus only?)
-            76,  # _Sub_CPU_Reset,
-            120, # _Network_Time_Request
-            121, # _Network_Time_DST
-        }
+        writable_sc_addresses = (
+            50,   # _PLC_Mode_Change_to_STOP - FIXME: may not be writeable
+            51,   # _Watchdog_Timer_Reset - FIXME: may not be writeable
+            53,   # _RTC_Date_Change
+            55,   # _RTC_Time_Change
+            60,   # _BT_Disable_Pairing  (Plus only?)
+            61,   # _BT_Activate_Pairing (Plus only?)
+            65,   # _SD_Eject
+            66,   # _SD_Delete_All
+            67,   # _SD_Copy_System
+            75,   # _WLAN_Reset (Plus only?)
+            76,   # _Sub_CPU_Reset,
+            120,  # _Network_Time_Request
+            121,  # _Network_Time_DST
+        )
 
         if start < 1 or start > 1000:
             raise ValueError('SC start address must be in [1, 1000]')
@@ -634,7 +633,6 @@ class ClickPLC(AsyncioModbusClient):
         coil = 61440 + (start - 1)
 
         await self.write_coils(coil, data)
-
 
     async def _set_df(self, start: int, data: list[float]):
         """Set DF registers. Called by `set`.
@@ -712,7 +710,6 @@ class ClickPLC(AsyncioModbusClient):
             raise ValueError('Data list longer than available addresses.')
         await self.write_registers(address, values=data)
 
-
     async def _set_td(self, start: int, data: list[int]):
         """Set TD registers. Called by `set`.
 
@@ -771,7 +768,6 @@ class ClickPLC(AsyncioModbusClient):
         values = [d & 0xffff for d in data]  # two's complement
 
         await self.write_registers(address, values)
-
 
     async def _set_txt(self, start: int, data: list[str]):
         """Set TXT registers. Called by `set`.

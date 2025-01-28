@@ -11,7 +11,7 @@ ADDRESS = 'fakeip'
 # from clickplc.driver import ClickPLC
 # ADDRESS = '172.16.0.168'
 
-
+# ruff: noqa: E302
 @pytest.fixture(scope='session')
 async def plc_driver():
     """Confirm the driver correctly initializes without a tags file."""
@@ -117,7 +117,6 @@ async def test_sc_roundtrip(plc_driver):
     # Test error handling for non-writable SC62 (_BT_Paired_Devices)
     with pytest.raises(ValueError, match="SC62 is not writable"):
         await plc_driver.set('sc62', True)
-
 
 @pytest.mark.asyncio(loop_scope='session')
 async def test_ds_roundtrip(plc_driver):
@@ -324,7 +323,6 @@ async def test_sc_error_handling(plc_driver):
     with pytest.raises(ValueError, match=r"Expected sc50 as a bool."):
         await plc_driver.set('sc50', 123)  # SC expects a bool value
 
-
 @pytest.mark.asyncio(loop_scope='session')
 async def test_t_error_handling(plc_driver):
     """Ensure errors are handled for invalid requests of t registers."""
@@ -431,7 +429,6 @@ async def test_sd_error_handling(plc_driver):
     # Test valid writable SD
     await plc_driver.set('sd29', 2024)  # Valid writable address
     assert await plc_driver.get('sd29') == 2024
-
 
 @pytest.mark.asyncio(loop_scope='session')
 @pytest.mark.parametrize('prefix', ['y', 'c'])
