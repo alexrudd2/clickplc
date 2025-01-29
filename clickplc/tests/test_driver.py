@@ -16,7 +16,7 @@ from clickplc.mock import ClickPLC as MockClickPLC
 # Test against pymodbus simulator
 ADDRESS = '127.0.0.1'
 autouse = True
-## Uncomment below to use a real PLC
+# Uncomment below to use a real PLC
 # ADDRESS = '172.16.0.168'
 # autouse = False
 
@@ -29,10 +29,10 @@ async def _sim():
         ModbusSlaveContext,
     )
     store = ModbusSlaveContext(
-        di=ModbusSequentialDataBlock(0, [0]*65536),  # Discrete Inputs
-        co=ModbusSequentialDataBlock(0, [0]*65536),  # Coils
-        hr=ModbusSequentialDataBlock(0, [0]*65536),  # Holding Registers
-        ir=ModbusSequentialDataBlock(0, [0]*65536)   # Input Registers
+        di=ModbusSequentialDataBlock(0, [0] * 65536),  # Discrete Inputs
+        co=ModbusSequentialDataBlock(0, [0] * 65536),  # Coils
+        hr=ModbusSequentialDataBlock(0, [0] * 65536),  # Holding Registers
+        ir=ModbusSequentialDataBlock(0, [0] * 65536)   # Input Registers
     )
     context = ModbusServerContext(slaves=store, single=True)
     server = ModbusTcpServer(context=context, address=("127.0.0.1", 5020))
