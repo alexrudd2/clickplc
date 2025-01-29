@@ -26,10 +26,11 @@ class AsyncioModbusClient:
     def __init__(self, address, timeout=1):
         """Set up communication parameters."""
         self.ip = address
+        self.port = 5020 if address == '127.0.0.1' else 502  # pymodbus simulator is 127.0.0.1:5020
         self.timeout = timeout
         self._detect_pymodbus_version()
         if self.pymodbus30plus:
-            self.client = AsyncModbusTcpClient(address, timeout=timeout)  # pyright: ignore [reportPossiblyUnboundVariable]
+            self.client = AsyncModbusTcpClient(address, timeout=timeout, port=self.port)  # pyright: ignore [reportPossiblyUnboundVariable]
         else:  # 2.x
             self.client = ReconnectingAsyncioModbusTcpClient()  # pyright: ignore [reportPossiblyUnboundVariable]
         self.lock = asyncio.Lock()
@@ -56,7 +57,7 @@ class AsyncioModbusClient:
             if self.pymodbus30plus:
                 await asyncio.wait_for(self.client.connect(), timeout=self.timeout)  # 3.x
             else:  # 2.4.x - 2.5.x
-                await self.client.start(self.ip)  # type: ignore[attr-defined]
+                await self.client.start(host=self.ip, port=self.port)  # type: ignore[attr-defined]
         except Exception as e:
             raise OSError(f"Could not connect to '{self.ip}'.") from e
 
