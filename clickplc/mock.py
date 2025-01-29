@@ -44,6 +44,7 @@ class AsyncClientMock(MagicMock):
         """Close the connection (2.5.3)."""
         ...
 
+
 class ClickPLC(realClickPLC):
     """A version of the driver replacing remote communication with local storage for testing."""
 
@@ -64,20 +65,20 @@ class ClickPLC(realClickPLC):
         if method == 'read_coils':
             bits = [self._coils[address + i] for i in range(count)]
             if pymodbus38plus:
-                return ReadCoilsResponse(bits = bits)
+                return ReadCoilsResponse(bits=bits)
             return ReadCoilsResponse(bits)  # type: ignore[arg-type]
         if method == 'read_discrete_inputs':
             bits = bits = [self._discrete_inputs[address + i]
                            for i in range(count)]
             if pymodbus38plus:
-                return ReadDiscreteInputsResponse(bits = bits)
+                return ReadDiscreteInputsResponse(bits=bits)
             return ReadDiscreteInputsResponse(bits)  # type: ignore[arg-type]
         elif method == 'read_holding_registers':
             registers = [int.from_bytes(self._registers[address + i], byteorder='big')
                          for i in range(count)]
             if pymodbus38plus:
-                return ReadHoldingRegistersResponse(registers = registers)
-            return ReadHoldingRegistersResponse(registers)  #type: ignore[arg-type]
+                return ReadHoldingRegistersResponse(registers=registers)
+            return ReadHoldingRegistersResponse(registers)  # type: ignore[arg-type]
         elif method == 'write_coils':
             for i, d in enumerate(values):
                 self._coils[address + i] = d
