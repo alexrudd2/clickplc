@@ -85,7 +85,7 @@ def test_driver_cli(capsys):
 
 @mock.patch('clickplc.ClickPLC', MockClickPLC)
 def test_driver_cli_tags_mock(capsys):
-    """Confirm the (mocked) commandline interface works without a tags file."""
+    """Confirm the (mocked) commandline interface works with a tags file."""
     command_line([ADDRESS, 'clickplc/tests/plc_tags.csv'])
     captured = capsys.readouterr()
     assert 'P_101' in captured.out
@@ -105,10 +105,8 @@ def test_driver_cli_tags(capsys):
     with pytest.raises(SystemExit):
         command_line([ADDRESS, 'tags', 'bogus'])
 
-@pytest.mark.skip  # broken with some combination of pytest-asyncio, pytest-xdist,
-                   # Python 3.12/3.13 and pymodbus 3.0.2, 3.1.3, and 3.3.1
-@pytest.mark.asyncio(loop_scope='session')
-async def test_unsupported_tags():
+@mock.patch('clickplc.util.AsyncioModbusClient.__init__')
+def test_unsupported_tags(mock_init):
     """Confirm the driver detects an improper tags file."""
     with pytest.raises(TypeError, match='unsupported data type'):
         ClickPLC(ADDRESS, 'clickplc/tests/bad_tags.csv')
