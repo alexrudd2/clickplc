@@ -8,7 +8,7 @@ version = "0.13.0"
 description="Python driver for AutomationDirect (formerly Koyo) Ethernet ClickPLCs."
 dependencies = [
   "pymodbus>=2.4.0; python_version == '3.9'",
-  "pymodbus>=3.0.2,<3.9.0; python_version >= '3.10'",
+  "pymodbus>=3.0.2,<3.10.0; python_version >= '3.10'",
 ]
 authors = [
   {name = "Pat Fuller", email = "patrickfuller@gmail.com" },
@@ -34,11 +34,11 @@ classifiers = [
 
 [project.optional-dependencies]
 test = [
-  'mypy==1.15.0',
+  'mypy==1.16.0',
   'pytest',
   'pytest-cov',
   'pytest-asyncio>=0.23.8',
-  'ruff==0.11.2',
+  'ruff==0.11.12',
   'types-PyYAML',
   'pyserial-asyncio>=0.4.0; python_version == "3.9"',  # pymodbus 2.x
 ]
