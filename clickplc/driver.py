@@ -472,7 +472,6 @@ class ClickPLC(AsyncioModbusClient):
         registers = await self.read_registers(address, count)
 
         # pack the pairs of 16-bit registers (little-endian) and then unpack as 32-byte signed ints
-        print(registers, count)
         packed = struct.pack(f'<{count}H', *registers)
         values = struct.unpack(f'<{count // 2}i', packed)
         return {f'ctd{start + n}': v for n, v in enumerate(values)}
