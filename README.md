@@ -59,20 +59,24 @@ The entire API is `get` and `set`, and takes a range of inputs:
 
 Currently, the following datatypes are supported:
 
-|  |  |  |
-|---|---|---|
-| x | bool | Input point |
-| y | bool | Output point |
-| c | bool | (C)ontrol relay |
-| t | bool | (T)imer |
-| ct | bool | (C)oun(t)er |
-| ds | int16 | (D)ata register, (s)ingle signed int |
-| dd | int32 | (D)ata register, (d)double signed int |
-| dh | uint16| (D) register, (h)ex |
-| df | float | (D)ata register, (f)loating point |
-| td | int16 | (T)ime (d)elay register |
-| ctd | int32 | (C)oun(t)er Current Values, (d)ouble int |
-| sd | int16 | (S)ystem (D)ata register |
+|  |  |  | |
+|---|---|---|---|
+| x | bool | Input point | R |
+| y | bool | Output point | RW |
+| c | bool | (C)ontrol relay | RW |
+| t | bool | (T)imer | R |
+| ct | bool | (C)oun(t)er | RW |
+| sc | bool | (S)ystem (C)ontrol Relay | mixed |
+| ds | int16 | (D)ata register, (s)ingle signed int | RW |
+| dd | int32 | (D)ata register, (d)double signed int | RW |
+| dh | uint16| (D) register, (h)ex | RW |
+| df | float | (D)ata register, (f)loating point | RW |
+| xd | uint32| Input Register | R |
+| yd | uint32| Output Register | RW |
+| td | int16 | (T)ime (d)elay register | RW |
+| ctd | int32 | (C)oun(t)er Current Values, (d)ouble int | RW |
+| sd | int16 | (S)ystem (D)ata register | mixed |
+| txt| char| (T)e(xt) | RW |
 
 ### Tags / Nicknames
 

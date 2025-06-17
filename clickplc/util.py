@@ -6,12 +6,13 @@ Copyright (C) 2022 NuMat Technologies
 from __future__ import annotations
 
 import asyncio
+from typing import Literal
 
 try:
-    from pymodbus.client import AsyncModbusTcpClient  # 3.x
+    from pymodbus.client import AsyncModbusTcpClient, AsyncModbusSerialClient  # 3.x
 except ImportError:  # 2.4.x - 2.5.x
     from pymodbus.client.asynchronous.async_io import (  # type: ignore
-        ReconnectingAsyncioModbusTcpClient,
+        ReconnectingAsyncioModbusTcpClient, ReconnectingAsyncioModbusSerialClient
     )
 import pymodbus.exceptions
 
@@ -23,15 +24,20 @@ class AsyncioModbusClient:
     including standard timeouts, async context manager, and queued requests.
     """
 
-    def __init__(self, address, timeout=1):
+    def __init__(self, address, timeout=1, interfacetype: Literal["TCP", "Serial"] = "TCP"):
         """Set up communication parameters."""
         self.ip = address
         self.timeout = timeout
         self._detect_pymodbus_version()
-        if self.pymodbus30plus:
+        if self.pymodbus30plus and interfacetype == "TCP":
             self.client = AsyncModbusTcpClient(address, timeout=timeout)  # pyright: ignore [reportPossiblyUnboundVariable]
-        else:  # 2.x
+        elif self.pymodbus30plus and interfacetype == "Serial":
+            self.client = AsyncModbusSerialClient(address, timeout=timeout)
+        elif interfacetype == "TCP":  # 2.x
             self.client = ReconnectingAsyncioModbusTcpClient()  # pyright: ignore [reportPossiblyUnboundVariable]
+        elif interfacetype == "Serial":
+            
+            self.client = ReconnectingAsyncioModbusSerialClient() # pyright: ignore [reportPossiblyUnboundVariable]
         self.lock = asyncio.Lock()
         self.connectTask = asyncio.create_task(self._connect())
 
