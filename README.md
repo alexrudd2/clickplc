@@ -29,17 +29,29 @@ this as needed. However, you'll likely want the python functionality below.
 ### Python
 
 This uses Python ≥3.5's async/await syntax to asynchronously communicate with
-a ClickPLC. For example:
+a ClickPLC via TCP (ethernet). For example:
 
 ```python
 import asyncio
 from clickplc import ClickPLC
 
-async def get():
+async def foo():
     async with ClickPLC('the-plc-ip-address') as plc:
         print(await plc.get('df1-df500'))
 
-asyncio.run(get())
+asyncio.run(foo())
+```
+
+Additionally, you can use the same functionality over Serial connection:
+```python
+import asyncio
+from clickplc import ClickPLC
+
+async def bar():
+    async with ClickPLC('the-com-port') as plc:
+        print(await plc.get('df1-df500'))
+
+asyncio.run(bar())
 ```
 
 The entire API is `get` and `set`, and takes a range of inputs:
@@ -57,7 +69,7 @@ The entire API is `get` and `set`, and takes a range of inputs:
 >>> await plc.set('y101', True)  # Sets Y101 to true
 ```
 
-Currently, the following datatypes are supported:
+All of the following datatypes are supported:
 
 |  |  |  |
 |---|---|---|
@@ -97,3 +109,9 @@ Additionally, the tags file can be used with the commandline tool to provide mor
 ```
 $ clickplc the-plc-ip-address tags-filepath
 ```
+
+### Warning with Serial Connection
+If you're using Serial connection (RS-232, maybe RS-485?) to communicate with the PLC, you **cannot** have something else running on your machine accessing that port. Maybe this is obvious to someone with further experience with Serial, but if you are running the Click Programming Software on that Serial port, you cannot also access the PLC with this library on that same Serial port - which is not how a TCP connection works. You can monitor values with the Click Programming Software on a TCP connection while connecting with this library on the same TCP connection.
+
+### Further Documentation
+If you want further documentation about how this library works, see [this guide](docs.md).
