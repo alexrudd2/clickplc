@@ -38,7 +38,7 @@ class ClickPLC(AsyncioModbusClient):
         'ds': 'int16',   # (D)ata register (s)ingle
         'dd': 'int32',   # (D)ata register, (d)ouble
         'dh': 'int16',   # (D)ata register, (h)ex
-        'df': 'float',   # (D)ata register (f)loating 
+        'df': 'float',   # (D)ata register (f)loating
         'xd': 'int32',   # Input Register
         'yd': 'int32',   # Output Register
         'td': 'int16',   # (T)imer register
@@ -446,8 +446,8 @@ class ClickPLC(AsyncioModbusClient):
         if end is None:
             return decoder.decode_32bit_float()
         return {f'df{n}': decoder.decode_32bit_float() for n in range(start, end + 1)}
-    
-    async def _get_xd(self, start: int, end: int | None) -> dict: 
+
+    async def _get_xd(self, start: int, end: int | None) -> dict:
         """Read XD registers. Called by `get`."""
         if start < 1 or start > 8:
             raise ValueError('YD must be in [1, 8].')
@@ -462,10 +462,11 @@ class ClickPLC(AsyncioModbusClient):
         decoder = BinaryPayloadDecoder.fromRegisters(registers,
                                                      byteorder=self.bigendian,
                                                      wordorder=self.lilendian)
-        if end is None : return decoder.decode_16bit_uint()
+        if end is None:
+            return decoder.decode_16bit_uint()
         return {f'td{n}' : decoder.decode_16bit_uint() for n in range(start, end + 1)}
-    
-    async def _get_yd(self, start: int, end: int | None) -> dict: 
+
+    async def _get_yd(self, start: int, end: int | None) -> dict:
         """Read YD registers. Called by `get`."""
         if start < 1 or start > 8:
             raise ValueError('YD must be in [1, 8].')
@@ -480,7 +481,8 @@ class ClickPLC(AsyncioModbusClient):
         decoder = BinaryPayloadDecoder.fromRegisters(registers,
                                                      byteorder=self.bigendian,
                                                      wordorder=self.lilendian)
-        if end is None : return decoder.decode_16bit_uint()
+        if end is None:
+            return decoder.decode_16bit_uint()
         return {f'td{n}' : decoder.decode_16bit_uint() for n in range(start, end + 1)}
 
     async def _get_td(self, start: int, end: int | None) -> dict:
@@ -645,8 +647,12 @@ class ClickPLC(AsyncioModbusClient):
             (SC50 and SC51 may actually be read-only!)
         """
         writable_sc_addresses = (
-            50,   # _PLC_Mode_Change_to_STOP - FIXME: may not be writeable
-            51,   # _Watchdog_Timer_Reset - FIXME: may not be writeable
+            # hahaha! alex was right -- these addresses are NOT writable from modbus,
+            #  but weirdly are writable via ladder logic.
+            #  probably just a security concern
+            #50,   # _PLC_Mode_Change_to_STOP - NOTE: may not be writeable
+            #51,   # _Watchdog_Timer_Reset - NOTE: may not be writeable
+            # -- actual writable addresses --
             53,   # _RTC_Date_Change
             55,   # _RTC_Time_Change
             60,   # _BT_Disable_Pairing  (Plus only?)
@@ -665,7 +671,12 @@ class ClickPLC(AsyncioModbusClient):
         if len(data) > 1000 - start + 1:
             raise ValueError('Data list longer than available SC addresses.')
         for i in range(len(data)):
-            if (start + i) not in writable_sc_addresses:
+            if (start + i) in (50, 51):
+                raise ValueError(
+                    "SC50 and SC51 are not writable via Modbus. However, " +
+                    "they are writable via ladder logic."
+                )
+            elif (start + i) not in writable_sc_addresses:
                 raise ValueError(f"SC{start + i} is not writable.")
 
         coil = 61440 + (start - 1)
@@ -756,7 +767,7 @@ class ClickPLC(AsyncioModbusClient):
 
         if len(data) > 8 - start + 1 :
             raise ValueError("Data list is longer than available addresses.")
-        
+
         # pymodbus is expecting list[uint_16]
         # convert each hex??
         values: list[bytes] = []
@@ -766,7 +777,7 @@ class ClickPLC(AsyncioModbusClient):
 
         await self.write_registers(address, values)
         return
-        
+
     async def _set_td(self, start: int, data: list[int]):
         """Set TD registers. Called by `set`.
 
@@ -791,7 +802,7 @@ class ClickPLC(AsyncioModbusClient):
         address = 49152 + 2 * (start - 1)
         if len(data) > 250 - start + 1:
             raise ValueError('Data list longer than available addresses.')
-        
+
         # pymodbus is expectin list[uint_16]
         # convert each int_32 into a uint_16 pair (little-endian) with the same byte value
 
@@ -884,7 +895,9 @@ class ClickPLC(AsyncioModbusClient):
             return {}
         with open(tag_filepath) as csv_file:
             csv_data = csv_file.read().splitlines()
-        csv_data[0] = csv_data[0].lstrip('## ')
+            print(csv_data[0])
+        #NOTE: this line used to be .lstrip('## '). if something goes wrong check here
+        csv_data[0] = csv_data[0].removeprefix('## ')
         parsed: dict[str, dict[str, Any]] = {
             row['Nickname']: {
                 'address': {

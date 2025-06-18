@@ -8,13 +8,16 @@ from __future__ import annotations
 import asyncio
 from typing import Literal
 
+import pymodbus.exceptions
+
 try:
-    from pymodbus.client import AsyncModbusTcpClient, AsyncModbusSerialClient  # 3.x
+    from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient  # 3.x
 except ImportError:  # 2.4.x - 2.5.x
     from pymodbus.client.asynchronous.async_io import (  # type: ignore
-        ReconnectingAsyncioModbusTcpClient, ReconnectingAsyncioModbusSerialClient
+        ReconnectingAsyncioModbusSerialClient,
+        ReconnectingAsyncioModbusTcpClient,
     )
-import pymodbus.exceptions
+
 
 
 class AsyncioModbusClient:
@@ -36,7 +39,6 @@ class AsyncioModbusClient:
         elif interfacetype == "TCP":  # 2.x
             self.client = ReconnectingAsyncioModbusTcpClient()  # pyright: ignore [reportPossiblyUnboundVariable]
         elif interfacetype == "Serial":
-            
             self.client = ReconnectingAsyncioModbusSerialClient() # pyright: ignore [reportPossiblyUnboundVariable]
         self.lock = asyncio.Lock()
         self.connectTask = asyncio.create_task(self._connect())

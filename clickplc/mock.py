@@ -49,6 +49,11 @@ class ClickPLC(realClickPLC):
     """A version of the driver replacing remote communication with local storage for testing."""
 
     def __init__(self, address, tag_filepath='', timeout=1):
+        """Initialize the Mock ClickPLC class."""
+        # these are kind of unused lol
+        del address, timeout
+
+        # initialize variables for later
         self.tags = self._load_tags(tag_filepath)
         self.active_addresses = self._get_address_ranges(self.tags)
         self.client = AsyncClientMock()

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clickplc"
-version = "0.13.0"
+version = "0.14.0"
 description="Python driver for AutomationDirect (formerly Koyo) Ethernet ClickPLCs."
 dependencies = [
   "pymodbus>=2.4.0; python_version == '3.9'",
@@ -14,7 +14,8 @@ authors = [
   {name = "Pat Fuller", email = "patrickfuller@gmail.com" },
 ]
 maintainers = [
-  {name = "Alex Ruddick", email = "alex@ruddick.tech" }
+  {name = "Alex Ruddick", email = "alex@ruddick.tech" },
+  {name = "Andy Garcha"}
 ]
 readme = "README.md"
 classifiers = [
@@ -46,8 +47,8 @@ test = [
 clickplc = "clickplc:command_line"
 
 [project.urls]
-Homepage = "https://github.com/alexrudd2/clickplc"
-Issues = "https://github.com/alexrudd2/clickplc/issues"
+Homepage = "https://github.com/AutomationDirect/clickplc"
+Issues = "https://github.com/AutomationDirect/clickplc/issues"
 
 [tool.setuptools]
 packages = ["clickplc"]
@@ -58,11 +59,6 @@ line-length = 120
 target-version = "py310"
 
 [tool.ruff.lint]
-ignore = [
-  "B005",  # FIXME: lstrip()
-  "D104",  # Missing docstring in public package
-  "D107",  # Missing docstring in __init__
-]
 
 select = [
     "B",   # flake8-bugbear
@@ -77,7 +73,7 @@ select = [
     "UP",  # pyupgrade
     "W",   # pycodestyle warnings
     "YTT", # flake8-2020
-    # "ARG", # flake8-unused args
+    "ARG", # flake8-unused args
 ]
 
 [tool.ruff.lint.pydocstyle]
