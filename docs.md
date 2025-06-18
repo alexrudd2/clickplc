@@ -6,6 +6,7 @@ However, you can also connect over [Serial connection](https://en.wikipedia.org/
     <img src="https://github.com/user-attachments/assets/fb474433-eff4-4fd0-9ae3-7486e3adc62e" />
 </p>
 
+Both of these ports will work with this library. Connect the ClickPLC to the computer using either RS-232 or RS-485 - just make sure you set the `interfacetype` during initialization to "Serial". See the below examples for further explanation.
 
 ### 1-Addressing
 In the Click Programming Software, all of the addresses are 1-addressed. X1 is listed as address 1-00001. This library accounts for that by subtracting 1 from an address before sending it.
