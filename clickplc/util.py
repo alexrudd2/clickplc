@@ -27,7 +27,15 @@ class AsyncioModbusClient:
     including standard timeouts, async context manager, and queued requests.
     """
 
-    def __init__(self, address, timeout=1, interfacetype: Literal["TCP", "Serial"] = "TCP"):
+    def __init__(self,
+                 address,
+                 timeout=1,
+                 interfacetype: Literal["TCP", "Serial"] = "TCP",
+                 *,
+                 baudrate=38400,
+                 parity='O',
+                 stopbits=1,
+                 bytesize=8):
         """Set up communication parameters."""
         self.ip = address
         self.timeout = timeout
@@ -35,7 +43,14 @@ class AsyncioModbusClient:
         if self.pymodbus30plus and interfacetype == "TCP":
             self.client = AsyncModbusTcpClient(address, timeout=timeout)  # pyright: ignore [reportPossiblyUnboundVariable]
         elif self.pymodbus30plus and interfacetype == "Serial":
-            self.client = AsyncModbusSerialClient(address, timeout=timeout)
+            self.client = AsyncModbusSerialClient(
+                port=address,
+                timeout=timeout,
+                baudrate=baudrate,
+                bytesize=bytesize,
+                parity=parity,
+                stopbits=stopbits
+            )
         elif interfacetype == "TCP":  # 2.x
             self.client = ReconnectingAsyncioModbusTcpClient()  # pyright: ignore [reportPossiblyUnboundVariable]
         elif interfacetype == "Serial":

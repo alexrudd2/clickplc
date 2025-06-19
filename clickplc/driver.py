@@ -20,6 +20,7 @@ from pymodbus.payload import BinaryPayloadDecoder
 
 from clickplc.util import AsyncioModbusClient
 
+DEBUG_STMNTS: bool = False
 
 class ClickPLC(AsyncioModbusClient):
     """Ethernet driver for the Koyo ClickPLC.
@@ -47,7 +48,16 @@ class ClickPLC(AsyncioModbusClient):
         'txt': 'str',    # ASCII Text
     }
 
-    def __init__(self, address, tag_filepath='', timeout=1, interfacetype: Literal["TCP", "Serial"] = 'TCP'):
+    def __init__(self,
+                 address,
+                 tag_filepath='',
+                 timeout=1,
+                 interfacetype: Literal["TCP", "Serial"] = 'TCP',
+                 *,
+                 baudrate=38400,
+                 parity='O',
+                 stopbits=1,
+                 bytesize=8):
         """Initialize PLC connection and data structure.
 
         Args:
@@ -56,7 +66,26 @@ class ClickPLC(AsyncioModbusClient):
             timeout (optional): Timeout when communicating with PLC. Default 1s.
 
         """
-        super().__init__(address, timeout, interfacetype)
+        if DEBUG_STMNTS:
+            print("ClickPLC __init__() called with the following arguments:")
+            print(f"- {address=}")
+            print(f"- {timeout=}")
+            print(f"- {interfacetype=}")
+            print(f"- {baudrate=}")
+            print(f"- {parity=}")
+            print(f"- {stopbits=}")
+            print(f"- {bytesize=}")
+        super().__init__(
+            address,
+            timeout,
+            interfacetype,
+            baudrate=baudrate,
+            parity=parity,
+            stopbits=stopbits,
+            bytesize=bytesize
+        )
+        if DEBUG_STMNTS:
+            print("ClickPLC's super.__init__() complete!")
         self.bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
         self.lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore[attr-defined]
         self.tags = self._load_tags(tag_filepath)
@@ -97,6 +126,8 @@ class ClickPLC(AsyncioModbusClient):
         This uses the ClickPLC's internal variable notation, which can be
         found in the Address Picker of the ClickPLC software.
         """
+        if DEBUG_STMNTS:
+            print(f"ClickPLC.get() called with {address=}")
         if address is None:
             if not self.tags:
                 raise ValueError('An address must be supplied to get if tags were not '
@@ -140,6 +171,8 @@ class ClickPLC(AsyncioModbusClient):
         found in the Address Picker of the ClickPLC software. If a tags file
         was loaded at driver initialization, nicknames can be used instead.
         """
+        if DEBUG_STMNTS:
+            print(f"ClickPLC.set() called with {address=} and {data=}")
         if address in self.tags:
             address = self.tags[address]['id']
         if not isinstance(data, list):
