@@ -126,6 +126,8 @@ class ClickPLC(AsyncioModbusClient):
         This uses the ClickPLC's internal variable notation, which can be
         found in the Address Picker of the ClickPLC software.
         """
+        # if we were not given an address, default functionality is to
+        #   supply all the tags.
         if address is None:
             if not self.tags:
                 raise ValueError('An address must be supplied to get if tags were not '
@@ -137,19 +139,19 @@ class ClickPLC(AsyncioModbusClient):
             return {tag_name: results[tag_info['id'].lower()]
                     for tag_name, tag_info in self.tags.items()}
 
+        # check if there's more than one address to get
         if '-' in address:
             start, end = address.split('-')
         else:
             start, end = address, None
         i = next(i for i, s in enumerate(start) if s.isdigit())
 
+        # split the addresses into letters and numbers
         category = start[:i].lower()
         start_index = 0.5 if start[i:].lower() == "0u" else int(start[i:])
-
-        # the linter says this is better than an if block.
-        #   i think that is insane. this is not readable. but whatever.
         end_index = 0.5 if end is not None and end[i:].lower() == "0u" else None if end is None else int(end[i:])
 
+        # error checking
         if end_index is not None and end_index <= start_index:
             raise ValueError("End address must be greater than start address.")
         if category not in self.data_types:
@@ -213,8 +215,6 @@ class ClickPLC(AsyncioModbusClient):
             # however, we aren't going to handle any other type switching.
             #   using pydoc.locate, we can turn something like
             #   the string "float" into the actual type `float`.
-            #   personally, i wonder how long that .locate() takes, we
-            #   could just run it once. it's probably fine.
             if type(datum) != pydoc.locate(data_type):  # noqa: E721
                 raise ValueError(f"Expected {address} as a {data_type}.")
 
@@ -241,6 +241,7 @@ class ClickPLC(AsyncioModbusClient):
         a number of addresses not divisible by 8, it will have extra data. The
         extra data here is discarded before returning.
         """
+        # account for 021-036 too
         if (start % 100 == 0 or start % 100 > 16) and start not in range(21, 37):
             raise ValueError('X start address must be *01-*16.')
         if start < 1 or start > 816:
@@ -290,7 +291,7 @@ class ClickPLC(AsyncioModbusClient):
         a number of addresses not divisible by 8, it will have extra data. The
         extra data here is discarded before returning.
         """
-        if start % 100 == 0 or start % 100 > 16:
+        if start % 100 == 0 or start % 100 > 16 and start not in range(21, 37):
             raise ValueError('Y start address must be *01-*16.')
         if start < 1 or start > 816:
             raise ValueError('Y start address must be in [001, 816].')
@@ -300,7 +301,7 @@ class ClickPLC(AsyncioModbusClient):
             coils = await self.read_coils(start_coil, 1)
             return coils.bits[0]
 
-        if end % 100 == 0 or end % 100 > 16:
+        if end % 100 == 0 or end % 100 > 16 and start not in range(21, 37):
             raise ValueError('Y end address must be *01-*16.')
         if end < 1 or end > 816:
             raise ValueError('Y end address must be in [001, 816].')
