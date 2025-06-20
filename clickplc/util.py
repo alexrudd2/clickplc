@@ -6,6 +6,10 @@ Copyright (C) 2022 NuMat Technologies
 from __future__ import annotations
 
 import asyncio
+from enum import Enum
+from typing import Any, Literal
+
+import pymodbus.exceptions
 
 try:
     from pymodbus.client import AsyncModbusTcpClient  # 3.x
@@ -79,6 +83,21 @@ class AsyncioModbusClient:
         r = await self._request('read_holding_registers', address=address, count=count)
         registers += r.registers
         return registers
+    
+
+    def _convert_from_registers(
+            self,
+            registers: list[int],
+            data_type: Any,
+            word_order: Literal['big', 'little'] = 'big',
+            string_encoding: str = 'utf-8'
+            ) -> int | float | str | list[bool] | list[int] | list[float]:
+        return self.client.convert_from_registers(
+            registers,
+            data_type,
+            word_order=word_order,
+            string_encoding=string_encoding
+        )
 
     async def write_coils(self, address: int, values):
         """Write modbus coils."""

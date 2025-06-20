@@ -111,8 +111,13 @@ class ClickPLC(AsyncioModbusClient):
         else:
             start, end = address, None
         i = next(i for i, s in enumerate(start) if s.isdigit())
-        category, start_index = start[:i].lower(), int(start[i:])
-        end_index = None if end is None else int(end[i:])
+
+        category = start[:i].lower()
+        start_index = 0.5 if start[i:].lower() == "0u" else int(start[i:])
+
+        # the linter says this is better than an if block.
+        #   i think that is insane. this is not readable. but whatever.
+        end_index = 0.5 if end is not None and end[i:].lower() == "0u" else None if end is None else int(end[i:])
 
         if end_index is not None and end_index <= start_index:
             raise ValueError("End address must be greater than start address.")
@@ -175,7 +180,7 @@ class ClickPLC(AsyncioModbusClient):
         a number of addresses not divisible by 8, it will have extra data. The
         extra data here is discarded before returning.
         """
-        if start % 100 == 0 or start % 100 > 16:
+        if (start % 100 == 0 or start % 100 > 16) and start not in range(21, 37):
             raise ValueError('X start address must be *01-*16.')
         if start < 1 or start > 816:
             raise ValueError('X start address must be in [001, 816].')
@@ -185,7 +190,7 @@ class ClickPLC(AsyncioModbusClient):
             coils = await self.read_coils(start_coil, 1)
             return coils.bits[0]
 
-        if end % 100 == 0 or end % 100 > 16:
+        if end % 100 == 0 or end % 100 > 16 and start not in range(21, 37):
             raise ValueError('X end address must be *01-*16.')
         if end < 1 or end > 816:
             raise ValueError('X end address must be in [001, 816].')
