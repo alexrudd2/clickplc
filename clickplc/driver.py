@@ -526,15 +526,7 @@ class ClickPLC(AsyncioModbusClient):
         _adjusted_start = self.u_index(start)
         count = 1 if end is None else (self.u_index(end) - _adjusted_start + 1)
 
-        # ok so that count variable is getting used in two places.
-        #   here, where we're determining how many registers to read,
-        #   and at the bottom of the function, where we determine how many
-        #   to spit back out at the user. the problem is, there's a blank address
-        #   between each of these items - except between 0 and 1. that's 0u.
         _addresses = ("0", "0u", "1", "2", "3", "4", "5", "6", "7", "8")
-        # at this point we have the adjusted_start, so we can just say "how
-        #   many numbers past 1 are there?"
-
         _adjusted_count = int((end - start) * 2 + 1) if end is not None else 1
         registers = await self.read_registers(address, _adjusted_count)
         if not registers or len(registers) < count :
@@ -547,9 +539,7 @@ class ClickPLC(AsyncioModbusClient):
         if end is None:
             return decoder.decode_16bit_uint()
 
-        # honestly this is a complete mess and i should come back and make it not nasty
         _values: dict[str, int] = {}
-
         # if the start is yd0 or yd0u, we need some kind of special case
         _start_false = start
         while _start_false < 1 :
@@ -581,14 +571,7 @@ class ClickPLC(AsyncioModbusClient):
         _adjusted_start = self.u_index(start)
         count = 1 if end is None else (self.u_index(end) - _adjusted_start + 1)
 
-        # ok so that count variable is getting used in two places.
-        #   here, where we're determining how many registers to read,
-        #   and at the bottom of the function, where we determine how many
-        #   to spit back out at the user. the problem is, there's a blank address
-        #   between each of these items - except between 0 and 1. that's 0u.
         _addresses = ("0", "0u", "1", "2", "3", "4", "5", "6", "7", "8")
-        # at this point we have the adjusted_start, so we can just say "how
-        #   many numbers past 1 are there?"
 
         _adjusted_count = int((end - start) * 2 + 1) if end is not None else 1
         registers = await self.read_registers(address, _adjusted_count)
@@ -788,9 +771,8 @@ class ClickPLC(AsyncioModbusClient):
             (SC50 and SC51 may actually be read-only!)
         """
         writable_sc_addresses = (
-            # hahaha! alex was right -- these addresses are NOT writable from modbus,
-            #  but weirdly are writable via ladder logic.
-            #  probably just a security concern
+            # these addresses are NOT writable from modbus,
+            #  but are writable via ladder logic.
             #50,   # _PLC_Mode_Change_to_STOP - NOTE: may not be writeable
             #51,   # _Watchdog_Timer_Reset - NOTE: may not be writeable
             # -- actual writable addresses --
@@ -902,11 +884,6 @@ class ClickPLC(AsyncioModbusClient):
 
     async def _set_yd(self, start: int, data: list[int]):
         """Set YD registers. Called by `set`."""
-        # debug print statement
-        if DEBUG_STMNTS:
-            print("_set_yd() called")
-            print(f"{start=}")
-            print(f"{data=}")
         # make sure the values are correct
         #   side note: yd0u will come in with start == 0.5
         if start < 0 or start > 8:
@@ -920,8 +897,6 @@ class ClickPLC(AsyncioModbusClient):
         if DEBUG_STMNTS:
             print(f"{address=}")
 
-        # i am going to do this horribly. anyone who comes after me and wants
-        #   to fix it is absolutely welcome to.
         horrible_index = self.u_index(start)
         if len(data) > 10 - horrible_index:
             raise ValueError(
@@ -929,19 +904,13 @@ class ClickPLC(AsyncioModbusClient):
                 "Make sure you're accounting for YD0u!"
                 )
 
-        # yd sucks. sorry i have to do it like this
         values: list[int] = []
-
-
-
         for i, datum in enumerate(data):
             if (start == 0 and i in (0, 1)) or (start == 0.5 and i == 0):
                 values.append(datum)
             else :
                 values.extend((datum, 0x0000))
-        # remove the last (0x0000). is this necessary? maybe not. i just don't
-        #   want to run into a modbus issue where i'm trying to write something
-        #   past YD8 (so technically YD8u), and it decides to go bananas.
+        # remove the last (0x0000)
         values.pop()
         if DEBUG_STMNTS:
             print(f"Final {values=}")
