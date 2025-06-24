@@ -112,7 +112,7 @@ class AsyncioModbusClient:
             data_type: Any,
             word_order: Literal['big', 'little'] = 'big',
             string_encoding: str = 'utf-8'
-            ) -> int | float | str | list[bool] | list[int] | list[float]:
+            ) -> Any: #int | float | str | list[bool] | list[int] | list[float]:
         return self.client.convert_from_registers(
             registers,
             data_type
