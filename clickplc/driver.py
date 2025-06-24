@@ -13,10 +13,9 @@ import pydoc
 import struct
 from collections import defaultdict
 from string import digits
-from typing import Any, ClassVar, overload
+from typing import Any, ClassVar, Literal, Union, overload
 
 from pymodbus.constants import Endian
-from pymodbus.payload import BinaryPayloadDecoder
 
 from clickplc.util import AsyncioModbusClient
 
@@ -199,6 +198,7 @@ class ClickPLC(AsyncioModbusClient):
         coils = await self.read_coils(start_coil, count)
         output = {}
         current = start
+        # NOTE: could use client.convert_to_registers
         for bit in coils.bits:
             if current > end:
                 break
@@ -248,6 +248,7 @@ class ClickPLC(AsyncioModbusClient):
         coils = await self.read_coils(start_coil, count)
         output = {}
         current = start
+        # NOTE: could use client.convert_to_registers
         for bit in coils.bits:
             if current > end:
                 break
@@ -280,6 +281,7 @@ class ClickPLC(AsyncioModbusClient):
         end_coil = 16384 + end - 1
         count = end_coil - start_coil + 1
         coils = await self.read_coils(start_coil, count)
+        # NOTE: could use client.convert_to_registers
         return {f'c{(start + i)}': bit for i, bit in enumerate(coils.bits) if i < count}
 
     async def _get_t(self, start: int, end: int | None) -> dict | bool:
@@ -305,6 +307,7 @@ class ClickPLC(AsyncioModbusClient):
         end_coil = 14555 + end - 1
         count = end_coil - start_coil + 1
         coils = await self.read_coils(start_coil, count)
+        # NOTE: could use client.convert_to_registers
         return {f't{(start + i)}': bit for i, bit in enumerate(coils.bits) if i < count}
 
     async def _get_ct(self, start: int, end: int | None) -> dict | bool:
@@ -331,6 +334,7 @@ class ClickPLC(AsyncioModbusClient):
             count = end_coil - start_coil + 1
 
         coils = await self.read_coils(start_coil, count)
+        # NOTE: could use client.convert_to_registers
         return {f'ct{(start + i)}': bit for i, bit in enumerate(coils.bits) if i < count}
 
     async def _get_sc(self, start: int, end: int | None) -> dict | bool:
@@ -363,9 +367,10 @@ class ClickPLC(AsyncioModbusClient):
         end_coil = 61440 + (end - 1)
         count = end_coil - start_coil + 1
         coils = await self.read_coils(start_coil, count)
+        # NOTE: could use client.convert_to_registers
         return {f'sc{start + i}': bit for i, bit in enumerate(coils.bits) if i < count}
 
-    async def _get_ds(self, start: int, end: int | None) -> dict | int:
+    async def _get_ds(self, start: int, end: int | None) -> Union[dict[str, int], int]:
         """Read DS registers. Called by `get`.
 
         DS entries start at Modbus address 0 (1 in the Click software's
@@ -379,12 +384,15 @@ class ClickPLC(AsyncioModbusClient):
         address = 0 + start - 1
         count = 1 if end is None else (end - start + 1)
         registers = await self.read_registers(address, count)
-        decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=self.bigendian,
-                                                     wordorder=self.lilendian)
-        if end is None:
-            return decoder.decode_16bit_int()
-        return {f'ds{n}': decoder.decode_16bit_int() for n in range(start, end + 1)}
+        register_values: int | list[int] = self.client.convert_from_registers(registers, data_type=self.client.DATATYPE.INT16) # type: ignore
+        # one item was returned
+        if isinstance(register_values, int):
+            return register_values
+    
+        # more than one item is returned
+        if end is not None:
+            return {f'ds{n}': register_values[_index] for _index, n in enumerate(range(start, end + 1))}
+        raise ValueError(f"PyModbus has failed to return the correct type.")
 
     async def _get_dd(self, start: int, end: int | None) -> dict | int:
         """Read DD registers.
@@ -400,12 +408,16 @@ class ClickPLC(AsyncioModbusClient):
         address = 16384 + 2 * (start - 1)  # 32-bit
         count = 2 if end is None else 2 * (end - start + 1)
         registers = await self.read_registers(address, count)
-        decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=self.bigendian,
-                                                     wordorder=self.lilendian)
+        registers_real = registers.copy()
+        for i, item in enumerate(registers):
+            if i % 2:
+                registers_real[i - 1] = item
+            else:
+                registers_real[i + 1] = item
+        register_values = self._convert_from_registers(registers_real, data_type=self.client.DATATYPE.INT32)
         if end is None:
-            return decoder.decode_32bit_int()
-        return {f'dd{n}': decoder.decode_32bit_int() for n in range(start, end + 1)}
+            return register_values
+        return {f"dd{n}": register_values[_index] for _index, n in enumerate(range(start, end + 1))}
 
     async def _get_dh(self, start: int, end: int | None) -> dict | int:
         """Read DH registers.
@@ -421,12 +433,10 @@ class ClickPLC(AsyncioModbusClient):
         address = 24576 + start - 1
         count = 1 if end is None else (end - start + 1)
         registers = await self.read_registers(address, count)
-        decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=self.bigendian,
-                                                     wordorder=self.lilendian)
+        register_values = self._convert_from_registers(registers, data_type=self.client.DATATYPE.INT16)
         if end is None:
-            return decoder.decode_16bit_uint()
-        return {f'dh{n}': decoder.decode_16bit_uint() for n in range(start, end + 1)}
+            return register_values
+        return {f"dh{n}": register_values[_index] for _index, n in enumerate(range(start, end + 1))}
 
     async def _get_df(self, start: int, end: int | None) -> dict | float:
         """Read DF registers. Called by `get`.
@@ -443,12 +453,97 @@ class ClickPLC(AsyncioModbusClient):
         address = 28672 + 2 * (start - 1)
         count = 2 * (1 if end is None else (end - start + 1))
         registers = await self.read_registers(address, count)
-        decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=self.bigendian,
-                                                     wordorder=self.lilendian)
+        registers_real = registers.copy()
+
+        for i, item in enumerate(registers):
+            if i % 2:
+                registers_real[i - 1] = item
+            else:
+                registers_real[i + 1] = item
+        print(registers_real)
+        register_values = self._convert_from_registers(registers_real, data_type=self.client.DATATYPE.FLOAT32)
+        print(register_values)
         if end is None:
-            return decoder.decode_32bit_float()
-        return {f'df{n}': decoder.decode_32bit_float() for n in range(start, end + 1)}
+            return register_values
+        return {f'df{n}': register_values[_index] for _index, n in enumerate(range(start, end + 1))}
+
+    async def _get_xd(self, start: int, end: int | None) -> dict:
+        """Read XD registers. Called by `get`."""
+        # check ranges
+        if start < 0 or start > 8:
+            raise ValueError('YD must be in [0, 8].')
+        if end is not None and (end < 0 or end > 8):
+            raise ValueError('YD end must be in [0, 8].')
+        # calculate address
+        address = int(57344 + 2 * (start))
+
+        # see documentation for `self.u_index()`
+        _adjusted_start = self.u_index(start)
+        count = 1 if end is None else (self.u_index(end) - _adjusted_start + 1)
+
+        _addresses = ("0", "0u", "1", "2", "3", "4", "5", "6", "7", "8")
+        _adjusted_count = int((end - start) * 2 + 1) if end is not None else 1
+        registers = await self.read_registers(address, _adjusted_count)
+        if not registers or len(registers) < count :
+            raise ValueError("Failed to read correct number of registers.")
+
+        register_values = self._convert_from_registers(registers, data_type=self.client.DATATYPE.INT16)
+        # this still works - it's just one value
+        if end is None:
+            return register_values
+
+        _values: dict[str, int] = {}
+        # if the start is yd0 or yd0u, we need some kind of special case
+        # case 0: start was 0
+        if _adjusted_start < 1:
+            _values['xd0'] = register_values.pop(0)
+        # case 1: start was 0 or 0u
+        if _adjusted_start < 2:
+            _values['xd0u'] = register_values.pop(0)
+        # normal case
+        for n in range(max(_adjusted_start, 2), _adjusted_start + count):
+            _values[f'xd{_addresses[n]}'] = register_values.pop(0)
+            if n != _adjusted_start + count - 1:
+                register_values.pop(0)
+        return _values
+
+    async def _get_yd(self, start: int | float, end: int | float | None) -> dict:
+        """Read YD registers. Called by `get`."""
+        # check ranges
+        if start < 0 or start > 8:
+            raise ValueError('YD must be in [0, 8].')
+        if end is not None and (end < 0 or end > 8):
+            raise ValueError('YD end must be in [0, 8].')
+        # calculate address
+        address = int(57856 + 2 * (start))
+
+        # see documentation for `self.u_index()`
+        _adjusted_start = self.u_index(start)
+        count = 1 if end is None else (self.u_index(end) - _adjusted_start + 1)
+
+        _adjusted_count = int((end - start) * 2 + 1) if end is not None else 1
+        registers = await self.read_registers(address, _adjusted_count)
+        if not registers or len(registers) < count :
+            raise ValueError("Failed to read correct number of registers.")
+        register_values = self._convert_from_registers(registers, data_type=self.client.DATATYPE.INT16)
+        # this still works - it's just one value
+        if end is None:
+            return register_values
+
+        _values: dict[str, int] = {}
+        # if the start is yd0 or yd0u, we need some kind of special case
+        # case 0: start was 0
+        if _adjusted_start < 1:
+            _values['yd0'] = register_values.pop(0)
+        # case 1: start was 0 or 0u
+        if _adjusted_start < 2:
+            _values['yd0u'] = register_values.pop(0)
+        # normal case
+        for n in range(max(_adjusted_start, 2), _adjusted_start + count):
+            _values[f'yd{n - 1}'] = register_values.pop(0)
+            if n != _adjusted_start + count - 1:
+                register_values.pop(0)
+        return _values
 
     async def _get_td(self, start: int, end: int | None) -> dict:
         """Read TD registers. Called by `get`.
@@ -464,12 +559,10 @@ class ClickPLC(AsyncioModbusClient):
         address = 45056 + (start - 1)
         count = 1 if end is None else (end - start + 1)
         registers = await self.read_registers(address, count)
-        decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=self.bigendian,
-                                                     wordorder=self.lilendian)
+        register_values = self._convert_from_registers(registers, data_type=self.client.DATATYPE.INT16)
         if end is None:
-            return decoder.decode_16bit_int()
-        return {f'td{n}': decoder.decode_16bit_int() for n in range(start, end + 1)}
+            return register_values
+        return {f"td{n}": register_values.pop(0) for n in range(start, end + 1)}
 
     async def _get_ctd(self, start: int, end: int | None) -> dict:
         """Read CTD registers. Called by `get`.
@@ -485,12 +578,16 @@ class ClickPLC(AsyncioModbusClient):
         address = 49152 + 2 * (start - 1)  # 32-bit
         count = 1 if end is None else (end - start + 1)
         registers = await self.read_registers(address, count * 2)
-        decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=self.bigendian,
-                                                     wordorder=self.lilendian)
+        registers_real = registers.copy()
+        for i, item in enumerate(registers):
+            if i % 2:
+                registers_real[i - 1] = item
+            else:
+                registers_real[i + 1] = item
+        register_values = self._convert_from_registers(registers_real, data_type=self.client.DATATYPE.INT32)
         if end is None:
-            return decoder.decode_32bit_int()
-        return {f'ctd{n}': decoder.decode_32bit_int() for n in range(start, end + 1)}
+            return register_values
+        return {f"ctd{n}": register_values.pop(0) for n in range(start, end + 1)}
 
     async def _get_sd(self, start: int, end: int | None) -> dict | int:
         """Read SD registers. Called by `get`.
@@ -506,12 +603,10 @@ class ClickPLC(AsyncioModbusClient):
         address = 61440 + start - 1
         count = 1 if end is None else (end - start + 1)
         registers = await self.read_registers(address, count)
-        decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=self.bigendian,
-                                                     wordorder=self.lilendian)
+        register_values = self._convert_from_registers(registers, data_type=self.client.DATATYPE.INT16)
         if end is None:
-            return decoder.decode_16bit_int()
-        return {f'sd{n}': decoder.decode_16bit_int() for n in range(start, end + 1)}
+            return register_values
+        return {f"sd{n}": register_values.pop(0) for n in range(start, end + 1)}
 
     @overload
     async def _get_txt(self, start: int, end: None) -> str: ...
@@ -534,23 +629,27 @@ class ClickPLC(AsyncioModbusClient):
         address = 36864 + (start - 1) // 2
         if end is None:
             registers = await self.read_registers(address, 1)
-            decoder = BinaryPayloadDecoder.fromRegisters(registers)
-            if start % 2:  # if starting on the second byte of a 16-bit register, discard the MSB
-                decoder.decode_string()
-            return decoder.decode_string().decode()
+            return self._convert_from_registers(registers, data_type=self.client.DATATYPE.STRING)
 
         count = 1 + (end - start) // 2 + (start - 1) % 2
+        if (start % 2) == (end % 2) == 0:
+            count -= 1
         registers = await self.read_registers(address, count)
-        decoder = BinaryPayloadDecoder.fromRegisters(registers)  # endian irrelevant; manual decode
+        register_values: str = self._convert_from_registers(registers, data_type=self.client.DATATYPE.STRING)
+        if len(register_values) < count * 2:
+            raise Exception("You are requesting more text than has been put into the Click PLC.")
+
         r = ''
+        i = 0
         for _ in range(count):
-            msb = chr(decoder.decode_8bit_int())
-            lsb = chr(decoder.decode_8bit_int())
+            msb = register_values[2 * _]
+            lsb = register_values[2 * _ + 1]
             r += lsb + msb
         if end % 2:  # if ending on the first byte of a 16-bit register, discard the final LSB
             r = r[:-1]
         if not start % 2:
             r = r[1:]  # if starting on the last byte of a 16-bit register, discard the first MSB
+        assert len(r) == (end - start + 1), f"{len(r)=}, {end-start+1=}, {r=}"
         return {f'txt{start}-txt{end}': r}
 
     async def _set_y(self, start: int, data: list[bool]):
@@ -714,6 +813,71 @@ class ClickPLC(AsyncioModbusClient):
         if len(data) > 500 - start + 1:
             raise ValueError('Data list longer than available addresses.')
         await self.write_registers(address, values=data)
+
+    async def _set_yd(self, start: int, data: list[int]):
+        """Set YD registers. Called by `set`."""
+        # make sure the values are correct
+        #   side note: yd0u will come in with start == 0.5
+        if start < 0 or start > 8:
+            raise ValueError("YD must be in [0, 8]")
+        # make sure all the data is an int16
+        for datum in data:
+            if datum.bit_length() > 16:
+                raise ValueError(f"Datum {datum} is longer than 16 bits. YD registers cannot hold more than 16 bits.")
+        # get the correct starting address
+        address = int(57856 + 2 * (start))
+
+        horrible_index = self.u_index(start)
+        if len(data) > 10 - horrible_index:
+            raise ValueError(
+                "Data list is longer than available addresses. " +
+                "Make sure you're accounting for YD0u!"
+                )
+
+        values: list[int] = []
+        extended_zero = False
+        for i, datum in enumerate(data):
+            if (start == 0 and i in (0, 1)) or (start == 0.5 and i == 0):
+                values.append(datum)
+            else :
+                extended_zero = True
+                values.extend((datum, 0x0000))
+        # remove the last (0x0000)
+        if extended_zero:
+            values.pop()
+        await self.write_registers(address, values)
+        return
+
+    @staticmethod
+    def u_index(x: int | float) -> int:
+        """Here's the deal with this method.
+
+        I had to denote for XD and YD if somebody was trying to get/set
+        XD0u or YD0u. So if that happens, then I pass through 0.5 as the
+        start or end. The problem is, this messes with trying to figure out how many
+        values are to be returned / to be set. So this just orders them
+        in a normal `int` value.
+
+        ```
+        u_index(0)
+        >>> 0
+        u_index(0.5)
+        >>> 1
+        u_index(1)
+        >>> 2
+        u_index(2)
+        >>> 3
+        # etc...
+        ```
+
+        """
+        if x == 0 :
+            return 0
+        if x == 0.5:
+            return 1
+        if isinstance(x, float) :
+            raise ValueError(f"You cannot send {x} into 'u_index'. It is a float that is not 0.5.")
+        return x + 1
 
     async def _set_td(self, start: int, data: list[int]):
         """Set TD registers. Called by `set`.
