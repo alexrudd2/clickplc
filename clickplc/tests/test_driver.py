@@ -11,7 +11,6 @@ ADDRESS = 'fakeip'
 # from clickplc.driver import ClickPLC
 # ADDRESS = '172.16.0.168'
 
-# ruff: noqa: E302
 @pytest.fixture(scope='session')
 async def plc_driver():
     """Confirm the driver correctly initializes without a tags file."""
