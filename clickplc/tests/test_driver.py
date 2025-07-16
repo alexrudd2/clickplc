@@ -1,15 +1,46 @@
 """Test the driver correctly parses a tags file and responds with correct data."""
 import asyncio
+import contextlib
 from unittest import mock
 
 import pytest
 
-from clickplc import command_line
-from clickplc.mock import ClickPLC
+try:
+    from pymodbus.server import ModbusTcpServer
+except ImportError:
+    from pymodbus.server.async_io import ModbusTcpServer  # type: ignore[no-redef]
 
-ADDRESS = 'fakeip'
-# from clickplc.driver import ClickPLC
+from clickplc import ClickPLC, command_line
+from clickplc.mock import ClickPLC as MockClickPLC
+
+# Test against pymodbus simulator
+ADDRESS = '127.0.0.1'
+autouse = True
+# Uncomment below to use a real PLC
 # ADDRESS = '172.16.0.168'
+# autouse = False
+
+@pytest.fixture(scope='session', autouse=autouse)
+async def _sim():
+    """Start a modbus server and datastore."""
+    from pymodbus.datastore import (
+        ModbusSequentialDataBlock,
+        ModbusServerContext,
+        ModbusSlaveContext,
+    )
+    store = ModbusSlaveContext(
+        di=ModbusSequentialDataBlock(0, [0] * 65536),  # Discrete Inputs
+        co=ModbusSequentialDataBlock(0, [0] * 65536),  # Coils
+        hr=ModbusSequentialDataBlock(0, [0] * 65536),  # Holding Registers
+        ir=ModbusSequentialDataBlock(0, [0] * 65536)   # Input Registers
+    )
+    context = ModbusServerContext(slaves=store, single=True)
+    server = ModbusTcpServer(context=context, address=("127.0.0.1", 5020))
+    asyncio.ensure_future(server.serve_forever())  # noqa: RUF006
+    await(asyncio.sleep(0))
+    yield
+    with contextlib.suppress(AttributeError):  # 2.x
+        await server.shutdown()  # type: ignore
 
 @pytest.fixture(scope='session')
 async def plc_driver():
@@ -41,7 +72,7 @@ def expected_tags():
         'timer': {'address': {'start': 449153}, 'id': 'CTD1', 'type': 'int32'},
     }
 
-@mock.patch('clickplc.ClickPLC', ClickPLC)
+
 def test_driver_cli(capsys):
     """Confirm the commandline interface works without a tags file."""
     command_line([ADDRESS])
@@ -50,7 +81,19 @@ def test_driver_cli(capsys):
     assert 'c100' in captured.out
     assert 'df100' in captured.out
 
-@mock.patch('clickplc.ClickPLC', ClickPLC)
+
+@mock.patch('clickplc.ClickPLC', MockClickPLC)
+def test_driver_cli_tags_mock(capsys):
+    """Confirm the (mocked) commandline interface works with a tags file."""
+    command_line([ADDRESS, 'clickplc/tests/plc_tags.csv'])
+    captured = capsys.readouterr()
+    assert 'P_101' in captured.out
+    assert 'VAHH_101_OK' in captured.out
+    assert 'TI_101' in captured.out
+    with pytest.raises(SystemExit):
+        command_line([ADDRESS, 'tags', 'bogus'])
+
+
 def test_driver_cli_tags(capsys):
     """Confirm the commandline interface works with a tags file."""
     command_line([ADDRESS, 'clickplc/tests/plc_tags.csv'])
@@ -61,8 +104,8 @@ def test_driver_cli_tags(capsys):
     with pytest.raises(SystemExit):
         command_line([ADDRESS, 'tags', 'bogus'])
 
-@pytest.mark.asyncio(loop_scope='session')
-async def test_unsupported_tags():
+@mock.patch('clickplc.util.AsyncioModbusClient.__init__')
+def test_unsupported_tags(mock_init):
     """Confirm the driver detects an improper tags file."""
     with pytest.raises(TypeError, match='unsupported data type'):
         ClickPLC(ADDRESS, 'clickplc/tests/bad_tags.csv')
