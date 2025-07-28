@@ -42,7 +42,6 @@ async def _sim():
     with contextlib.suppress(AttributeError):  # 2.x
         await server.shutdown()  # type: ignore
 
-# ruff: noqa: E302
 @pytest.fixture(scope='session')
 async def plc_driver():
     """Confirm the driver correctly initializes without a tags file."""
