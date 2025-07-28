@@ -40,6 +40,7 @@ test = [
   'pytest-asyncio>=0.23.8',
   'ruff==0.12.3',
   'types-PyYAML',
+  'pyserial-asyncio>=0.4.0; python_version == "3.9"',  # pymodbus 2.x
 ]
 
 [project.scripts]
