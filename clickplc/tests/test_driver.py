@@ -174,9 +174,10 @@ async def test_ds_roundtrip(plc_driver):
 async def test_df_roundtrip(plc_driver):
     """Confirm df floats are read back correctly after being set."""
     await plc_driver.set('df1', 0.0)
-    await plc_driver.set('df2', [2.0, 3.0, 4.0, 0.0])
-    expected = {'df1': 0.0, 'df2': 2.0, 'df3': 3.0, 'df4': 4.0, 'df5': 0.0}
-    assert expected == await plc_driver.get('df1-df5')
+    await plc_driver.set('df2', [2.2, 3.3, 4.0, 0.0])
+    expected = {'df1': 0.0, 'df2': 2.2, 'df3': 3.3, 'df4': 4.0, 'df5': 0.0}
+    # python floats are 64 bits and the PLC are 32
+    assert expected == pytest.approx(await plc_driver.get('df1-df5'), rel=1e-6)
     await plc_driver.set('df500', 1.0)
     assert await plc_driver.get('df500') == 1.0
 
