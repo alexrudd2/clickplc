@@ -2,6 +2,7 @@
 
 Distributed under the GNU General Public License v2
 Copyright (C) 2022 NuMat Technologies
+Copyright (C) 2024 Alex Ruddick
 """
 from __future__ import annotations
 
@@ -46,10 +47,11 @@ class AsyncioModbusClient:
 
     def _detect_pymodbus_version(self) -> None:
         """Detect various pymodbus versions."""
-        self.pymodbus30plus = int(pymodbus.__version__[0]) == 3
-        self.pymodbus32plus = self.pymodbus30plus and int(pymodbus.__version__[2]) >= 2
-        self.pymodbus33plus = self.pymodbus30plus and int(pymodbus.__version__[2]) >= 3
-        self.pymodbus35plus = self.pymodbus30plus and int(pymodbus.__version__[2]) >= 5
+        major, minor, _patch = map(int, pymodbus.__version__.split('.')[:3])
+        self.pymodbus30plus = major == 3
+        self.pymodbus32plus = major == 3 and minor >= 2
+        self.pymodbus33plus = major == 3 and minor >= 3
+        self.pymodbus35plus = major == 3 and minor >= 5
 
     async def _connect(self) -> None:
         """Start asynchronous reconnect loop."""
