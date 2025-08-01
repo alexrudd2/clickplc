@@ -198,6 +198,8 @@ async def test_dd_roundtrip(plc_driver):
     await plc_driver.set('dd3', [-2**31, 2**31 - 1])
     expected = {'dd1': 1, 'dd2': 0, 'dd3': -2**31, 'dd4': 2**31 - 1, 'dd5': 0}
     assert expected == await plc_driver.get('dd1-dd5')
+    assert await plc_driver.get('dd3') == -2**31
+    assert await plc_driver.get('dd4') == 2**31 - 1
     await plc_driver.set('dd1000', 1000)
     assert await plc_driver.get('dd1000') == 1000
 
