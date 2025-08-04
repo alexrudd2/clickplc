@@ -98,3 +98,7 @@ ignore_missing_imports = true
 addopts = "--cov=clickplc"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
