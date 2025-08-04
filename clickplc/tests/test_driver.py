@@ -17,7 +17,7 @@ from clickplc.mock import ClickPLC as MockClickPLC
 ADDRESS = '127.0.0.1'
 autouse = True
 # Uncomment below to use a real PLC
-# ADDRESS = '172.16.0.168'
+# ADDRESS = '172.16.1.168'
 # autouse = False
 
 @pytest.fixture(scope='session', autouse=autouse)
