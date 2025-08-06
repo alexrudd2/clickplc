@@ -9,7 +9,7 @@ license = "GPL-2.0-or-later"
 description="Python driver for AutomationDirect (formerly Koyo) Ethernet ClickPLCs."
 dependencies = [
   "pymodbus>=2.4.0; python_version == '3.9'",
-  "pymodbus>=3.0.2,<3.12.0; python_version >= '3.10'",
+  "pymodbus>=3.0.2,<3.12.0,!=3.10.0; python_version >= '3.10'",
 ]
 authors = [
   {name = "Pat Fuller", email = "patrickfuller@gmail.com" },
