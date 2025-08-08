@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clickplc"
-version = "0.14.0"
+version = "0.14.1"
 description="Python driver for AutomationDirect (formerly Koyo) Ethernet ClickPLCs."
 dependencies = [
   "pymodbus>=2.4.0; python_version == '3.9'",
@@ -14,8 +14,7 @@ authors = [
   {name = "Pat Fuller", email = "patrickfuller@gmail.com" },
 ]
 maintainers = [
-  {name = "Alex Ruddick", email = "alex@ruddick.tech" },
-  {name = "Andy Garcha"}
+  {name = "Alex Ruddick", email = "alex@ruddick.tech" }
 ]
 readme = "README.md"
 classifiers = [
@@ -48,8 +47,8 @@ test = [
 clickplc = "clickplc:command_line"
 
 [project.urls]
-Homepage = "https://github.com/AutomationDirect/clickplc"
-Issues = "https://github.com/AutomationDirect/clickplc/issues"
+Homepage = "https://github.com/alexrudd2/clickplc"
+Issues = "https://github.com/alexrudd2/clickplc/issues"
 
 [tool.setuptools]
 packages = ["clickplc"]
