@@ -4,11 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clickplc"
-version = "0.13.0"
+version = "0.14.0"
+license = "GPL-2.0-or-later"
 description="Python driver for AutomationDirect (formerly Koyo) Ethernet ClickPLCs."
 dependencies = [
   "pymodbus>=2.4.0; python_version == '3.9'",
-  "pymodbus>=3.0.2,<3.10.0; python_version >= '3.10'",
+  "pymodbus>=3.0.2,<3.11.0; python_version >= '3.10'",
 ]
 authors = [
   {name = "Pat Fuller", email = "patrickfuller@gmail.com" },
@@ -18,7 +19,6 @@ maintainers = [
 ]
 readme = "README.md"
 classifiers = [
-    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
     "Development Status :: 4 - Beta",
     "Natural Language :: English",
     "Programming Language :: Python",
@@ -28,18 +28,20 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Human Machine Interfaces",
     "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)"
 ]
 
 [project.optional-dependencies]
 test = [
-  'mypy==1.16.0',
+  'mypy==1.17.1',
   'pytest',
   'pytest-cov',
   'pytest-asyncio>=0.23.8',
-  'ruff==0.11.12',
+  'ruff==0.12.7',
   'types-PyYAML',
+  'pyserial-asyncio>=0.4.0; python_version == "3.9"',  # pymodbus 2.x
 ]
 
 [project.scripts]
@@ -97,3 +99,7 @@ ignore_missing_imports = true
 addopts = "--cov=clickplc"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
