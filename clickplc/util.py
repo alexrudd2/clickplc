@@ -2,6 +2,7 @@
 
 Distributed under the GNU General Public License v2
 Copyright (C) 2022 NuMat Technologies
+Copyright (C) 2024 Alex Ruddick
 """
 from __future__ import annotations
 
@@ -27,6 +28,7 @@ class AsyncioModbusClient:
     def __init__(self, address, timeout=1, interfacetype: Literal["TCP", "Serial"] = "TCP"):
         """Set up communication parameters."""
         self.ip = address
+        self.port = 5020 if address == '127.0.0.1' else 502  # pymodbus simulator is 127.0.0.1:5020
         self.timeout = timeout
         self._detect_pymodbus_version()
         if self.pymodbus30plus and interfacetype == "TCP":
@@ -51,10 +53,11 @@ class AsyncioModbusClient:
 
     def _detect_pymodbus_version(self) -> None:
         """Detect various pymodbus versions."""
-        self.pymodbus30plus = int(pymodbus.__version__[0]) == 3
-        self.pymodbus32plus = self.pymodbus30plus and int(pymodbus.__version__[2]) >= 2
-        self.pymodbus33plus = self.pymodbus30plus and int(pymodbus.__version__[2]) >= 3
-        self.pymodbus35plus = self.pymodbus30plus and int(pymodbus.__version__[2]) >= 5
+        major, minor, _patch = map(int, pymodbus.__version__.split('.')[:3])
+        self.pymodbus30plus = major == 3
+        self.pymodbus32plus = major == 3 and minor >= 2
+        self.pymodbus33plus = major == 3 and minor >= 3
+        self.pymodbus35plus = major == 3 and minor >= 5
 
     async def _connect(self) -> None:
         """Start asynchronous reconnect loop."""
@@ -62,7 +65,7 @@ class AsyncioModbusClient:
             if self.pymodbus30plus:
                 await asyncio.wait_for(self.client.connect(), timeout=self.timeout)  # 3.x
             else:  # 2.4.x - 2.5.x
-                await self.client.start(self.ip)  # type: ignore[attr-defined]
+                await self.client.start(host=self.ip, port=self.port)  # type: ignore[attr-defined]
         except Exception as e:
             raise OSError(f"Could not connect to '{self.ip}'.") from e
 

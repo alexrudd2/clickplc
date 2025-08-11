@@ -15,9 +15,6 @@ from collections import defaultdict
 from string import digits
 from typing import Any, ClassVar, Literal, overload
 
-from pymodbus.constants import Endian
-from pymodbus.payload import BinaryPayloadDecoder
-
 from clickplc.util import AsyncioModbusClient
 
 
@@ -403,40 +400,33 @@ class ClickPLC(AsyncioModbusClient):
         address = 0 + start - 1
         count = 1 if end is None else (end - start + 1)
         registers = await self.read_registers(address, count)
-        decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=self.bigendian,
-                                                     wordorder=self.lilendian)
-        if end is None:
-            return decoder.decode_16bit_int()
-        return {f'ds{n}': decoder.decode_16bit_int() for n in range(start, end + 1)}
+        # pack all as unsigned 16-bit little-endian and then unpack as signed 16-bit ints
+        packed = struct.pack(f'<{count}H', *registers)
+        values = struct.unpack(f'<{count}h', packed)
+        if count == 1:
+            return values[0]
+        return {f'ds{start + i}': v for i, v in enumerate(values)}
 
     async def _get_dd(self, start: int, end: int | None) -> dict | int:
-        """Read DD registers.
-
-        DD entries start at Modbus address 16384 (16385 in the Click software's
-        1-indexed notation). Each DS entry takes 32 bits.
-        """
         if start < 1 or start > 1000:
             raise ValueError('DD must be in [1, 1000]')
         if end is not None and (end < 1 or end > 1000):
             raise ValueError('DD end must be in [1, 1000]')
 
-        address = 16384 + 2 * (start - 1)  # 32-bit
+        address = 16384 + 2 * (start - 1)
         count = 2 if end is None else 2 * (end - start + 1)
         registers = await self.read_registers(address, count)
-        decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=self.bigendian,
-                                                     wordorder=self.lilendian)
-        if end is None:
-            return decoder.decode_32bit_int()
-        return {f'dd{n}': decoder.decode_32bit_int() for n in range(start, end + 1)}
+
+        # Pack registers as 16-bit unsigned shorts, little-endian ('<'), then unpack as signed 32-bit ints
+        packed = struct.pack(f'<{count}H', *registers)
+        values = struct.unpack(f'<{count // 2}i', packed)  # 'i' = signed 32-bit int
+
+        if count == 2:
+            return values[0]
+        return {f'dd{start + i}': v for i, v in enumerate(values)}
+
 
     async def _get_dh(self, start: int, end: int | None) -> dict | int:
-        """Read DH registers.
-
-        DH entries start at Modbus address 24576 (24577 in the Click software's
-        1-indexed notation). Each DH entry takes 16 bits.
-        """
         if start < 1 or start > 500:
             raise ValueError('DH must be in [1, 500]')
         if end is not None and (end < 1 or end > 500):
@@ -445,12 +435,11 @@ class ClickPLC(AsyncioModbusClient):
         address = 24576 + start - 1
         count = 1 if end is None else (end - start + 1)
         registers = await self.read_registers(address, count)
-        decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=self.bigendian,
-                                                     wordorder=self.lilendian)
-        if end is None:
-            return decoder.decode_16bit_uint()
-        return {f'dh{n}': decoder.decode_16bit_uint() for n in range(start, end + 1)}
+
+        if count == 1:
+            return int(registers[0])  # unsigned 16-bit int can just cast with int()
+        return {f'dh{start + n}': int(v) for n, v in enumerate(registers)}
+
 
     async def _get_df(self, start: int, end: int | None) -> dict | float:
         """Read DF registers. Called by `get`.
@@ -584,7 +573,7 @@ class ClickPLC(AsyncioModbusClient):
 
         return _values
 
-    async def _get_td(self, start: int, end: int | None) -> dict:
+    async def _get_td(self, start: int, end: int | None) -> dict | int:
         """Read TD registers. Called by `get`.
 
         TD entries start at Modbus address 45056 (45057 in the Click software's
@@ -598,12 +587,14 @@ class ClickPLC(AsyncioModbusClient):
         address = 45056 + (start - 1)
         count = 1 if end is None else (end - start + 1)
         registers = await self.read_registers(address, count)
-        decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=self.bigendian,
-                                                     wordorder=self.lilendian)
-        if end is None:
-            return decoder.decode_16bit_int()
-        return {f'td{n}': decoder.decode_16bit_int() for n in range(start, end + 1)}
+
+        # pack all as unsigned 16-bit little-endian and then unpack as signed 16-bit ints
+        packed = struct.pack(f'<{count}H', *registers)
+        values = struct.unpack(f'<{count}h', packed)
+        if count == 1:
+            return values[0]
+        return {f'td{start + i}': v for i, v in enumerate(values)}
+
 
     async def _get_ctd(self, start: int, end: int | None) -> dict:
         """Read CTD registers. Called by `get`.
@@ -617,14 +608,14 @@ class ClickPLC(AsyncioModbusClient):
             raise ValueError('CTD end must be in [1, 250]')
 
         address = 49152 + 2 * (start - 1)  # 32-bit
-        count = 1 if end is None else (end - start + 1)
-        registers = await self.read_registers(address, count * 2)
-        decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=self.bigendian,
-                                                     wordorder=self.lilendian)
-        if end is None:
-            return decoder.decode_32bit_int()
-        return {f'ctd{n}': decoder.decode_32bit_int() for n in range(start, end + 1)}
+        count = 2 if end is None else 2 * (end - start + 1)
+        registers = await self.read_registers(address, count)
+
+        # pack the pairs of 16-bit registers (little-endian) and then unpack as 32-byte signed ints
+        print(registers, count)
+        packed = struct.pack(f'<{count}H', *registers)
+        values = struct.unpack(f'<{count // 2}i', packed)
+        return {f'ctd{start + n}': v for n, v in enumerate(values)}
 
     async def _get_sd(self, start: int, end: int | None) -> dict | int:
         """Read SD registers. Called by `get`.
@@ -640,12 +631,10 @@ class ClickPLC(AsyncioModbusClient):
         address = 61440 + start - 1
         count = 1 if end is None else (end - start + 1)
         registers = await self.read_registers(address, count)
-        decoder = BinaryPayloadDecoder.fromRegisters(registers,
-                                                     byteorder=self.bigendian,
-                                                     wordorder=self.lilendian)
-        if end is None:
-            return decoder.decode_16bit_int()
-        return {f'sd{n}': decoder.decode_16bit_int() for n in range(start, end + 1)}
+
+        if count == 1 and end is None:
+            return int(registers[0])  # unsigned 16-bit int can just cast with int()
+        return {f'sd{start + n}': int(v) for n, v in enumerate(registers)}
 
     @overload
     async def _get_txt(self, start: int, end: None) -> str: ...
@@ -668,19 +657,19 @@ class ClickPLC(AsyncioModbusClient):
         address = 36864 + (start - 1) // 2
         if end is None:
             registers = await self.read_registers(address, 1)
-            decoder = BinaryPayloadDecoder.fromRegisters(registers)
-            if start % 2:  # if starting on the second byte of a 16-bit register, discard the MSB
-                decoder.decode_string()
-            return decoder.decode_string().decode()
+            r = registers[0]
+            assert isinstance(r, int)
+            if start % 2:
+                return chr(r & 0x00FF)  # if starting on the second byte of a 16-bit register, discard the MSB
+            return chr((r >> 8) & 0x00FF)  # otherwise discard LSB
 
         count = 1 + (end - start) // 2 + (start - 1) % 2
         registers = await self.read_registers(address, count)
-        decoder = BinaryPayloadDecoder.fromRegisters(registers)  # endian irrelevant; manual decode
-        r = ''
-        for _ in range(count):
-            msb = chr(decoder.decode_8bit_int())
-            lsb = chr(decoder.decode_8bit_int())
-            r += lsb + msb
+
+        # Swap the two bytes within each 16-bit register (i.e., 0x4231 -> 0x3142)
+        swapped = [((reg & 0xFF) << 8) | (reg >> 8) for reg in registers]
+        byte_data = b''.join(reg.to_bytes(2, 'big') for reg in swapped)
+        r = byte_data.decode('ascii')
         if end % 2:  # if ending on the first byte of a 16-bit register, discard the final LSB
             r = r[:-1]
         if not start % 2:
