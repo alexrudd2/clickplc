@@ -591,12 +591,10 @@ class ClickPLC(AsyncioModbusClient):
 
         Notes:
             Only the following SC addresses are writable:
-            SC50, SC51, SC53, SC55, SC60, SC61, SC65, SC66, SC67, SC75, SC76, SC120, SC121.
-            (SC50 and SC51 may actually be read-only!)
+            SC53, SC55, SC60, SC61, SC65, SC66, SC67, SC75, SC76, SC120, SC121.
+            SC50 and SC51 are not writable via Modbus, although they are in ladder.
         """
         writable_sc_addresses = (
-            50,   # _PLC_Mode_Change_to_STOP - FIXME: may not be writeable
-            51,   # _Watchdog_Timer_Reset - FIXME: may not be writeable
             53,   # _RTC_Date_Change
             55,   # _RTC_Time_Change
             60,   # _BT_Disable_Pairing  (Plus only?)
