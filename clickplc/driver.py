@@ -170,7 +170,7 @@ class ClickPLC(AsyncioModbusClient):
         a number of addresses not divisible by 8, it will have extra data. The
         extra data here is discarded before returning.
         """
-        if start % 100 == 0 or start % 100 > 16:
+        if (start % 100 == 0 or start % 100 > 16) and start not in range(21, 37):
             raise ValueError('X start address must be *01-*16.')
         if start < 1 or start > 816:
             raise ValueError('X start address must be in [001, 816].')
@@ -180,7 +180,7 @@ class ClickPLC(AsyncioModbusClient):
             coils = await self.read_coils(start_coil, 1)
             return coils.bits[0]
 
-        if end % 100 == 0 or end % 100 > 16:
+        if end % 100 == 0 or end % 100 > 16 and start not in range(21, 37):
             raise ValueError('X end address must be *01-*16.')
         if end < 1 or end > 816:
             raise ValueError('X end address must be in [001, 816].')
