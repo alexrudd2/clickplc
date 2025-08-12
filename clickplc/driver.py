@@ -46,7 +46,16 @@ class ClickPLC(AsyncioModbusClient):
         'txt': 'str',    # ASCII Text
     }
 
-    def __init__(self, address, tag_filepath='', timeout=1, interfacetype: Literal["TCP", "Serial"] = 'TCP'):
+    def __init__(self,
+                 address,
+                 tag_filepath='',
+                 timeout=1,
+                 interfacetype: Literal["TCP", "Serial"] = 'TCP',
+                 *,
+                 baudrate=38400,
+                 parity='O',
+                 stopbits=1,
+                 bytesize=8):
         """Initialize PLC connection and data structure.
 
         Args:
@@ -55,7 +64,15 @@ class ClickPLC(AsyncioModbusClient):
             timeout (optional): Timeout when communicating with PLC. Default 1s.
 
         """
-        super().__init__(address, timeout, interfacetype)
+        super().__init__(
+            address,
+            timeout,
+            interfacetype,
+            baudrate=baudrate,
+            parity=parity,
+            stopbits=stopbits,
+            bytesize=bytesize
+        )
         self.bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
         self.lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore[attr-defined]
         self.tags = self._load_tags(tag_filepath)
