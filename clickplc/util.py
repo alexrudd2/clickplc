@@ -7,12 +7,13 @@ Copyright (C) 2024 Alex Ruddick
 from __future__ import annotations
 
 import asyncio
+from typing import Literal
 
 try:
-    from pymodbus.client import AsyncModbusTcpClient  # 3.x
+    from pymodbus.client import AsyncModbusTcpClient, AsyncModbusSerialClient  # 3.x
 except ImportError:  # 2.4.x - 2.5.x
     from pymodbus.client.asynchronous.async_io import (  # type: ignore
-        ReconnectingAsyncioModbusTcpClient,
+        ReconnectingAsyncioModbusTcpClient, ReconnectingAsyncioModbusSerialClient
     )
 import pymodbus.exceptions
 
@@ -24,16 +25,21 @@ class AsyncioModbusClient:
     including standard timeouts, async context manager, and queued requests.
     """
 
-    def __init__(self, address, timeout=1):
+    def __init__(self, address, timeout=1, interfacetype: Literal["TCP", "Serial"] = "TCP"):
         """Set up communication parameters."""
         self.ip = address
         self.port = 5020 if address == '127.0.0.1' else 502  # pymodbus simulator is 127.0.0.1:5020
         self.timeout = timeout
         self._detect_pymodbus_version()
-        if self.pymodbus30plus:
-            self.client = AsyncModbusTcpClient(address, timeout=timeout, port=self.port)  # pyright: ignore [reportPossiblyUnboundVariable]
-        else:  # 2.x
+        if self.pymodbus30plus and interfacetype == "TCP":
+            self.client = AsyncModbusTcpClient(address, timeout=timeout)  # pyright: ignore [reportPossiblyUnboundVariable]
+        elif self.pymodbus30plus and interfacetype == "Serial":
+            self.client = AsyncModbusSerialClient(address, timeout=timeout)
+        elif interfacetype == "TCP":  # 2.x
             self.client = ReconnectingAsyncioModbusTcpClient()  # pyright: ignore [reportPossiblyUnboundVariable]
+        elif interfacetype == "Serial":
+            
+            self.client = ReconnectingAsyncioModbusSerialClient() # pyright: ignore [reportPossiblyUnboundVariable]
         self.lock = asyncio.Lock()
         self.connectTask = asyncio.create_task(self._connect())
 

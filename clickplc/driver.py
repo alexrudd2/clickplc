@@ -13,7 +13,9 @@ import pydoc
 import struct
 from collections import defaultdict
 from string import digits
-from typing import Any, ClassVar, overload
+from typing import Any, ClassVar, Literal, overload
+
+from pymodbus.payload import BinaryPayloadDecoder
 
 from clickplc.util import AsyncioModbusClient
 
@@ -35,14 +37,16 @@ class ClickPLC(AsyncioModbusClient):
         'ds': 'int16',   # (D)ata register (s)ingle
         'dd': 'int32',   # (D)ata register, (d)ouble
         'dh': 'int16',   # (D)ata register, (h)ex
-        'df': 'float',   # (D)ata register (f)loating point
+        'df': 'float',   # (D)ata register (f)loating 
+        'xd': 'int32',   # Input Register
+        'yd': 'int32',   # Output Register
         'td': 'int16',   # (T)imer register
         'ctd': 'int32',  # (C)oun(t)er Current values, (d)ouble
         'sd': 'int16',   # (S)ystem (D)ata register, single
         'txt': 'str',    # ASCII Text
     }
 
-    def __init__(self, address, tag_filepath='', timeout=1):
+    def __init__(self, address, tag_filepath='', timeout=1, interfacetype: Literal["TCP", "Serial"] = 'TCP'):
         """Initialize PLC connection and data structure.
 
         Args:
@@ -51,7 +55,9 @@ class ClickPLC(AsyncioModbusClient):
             timeout (optional): Timeout when communicating with PLC. Default 1s.
 
         """
-        super().__init__(address, timeout)
+        super().__init__(address, timeout, interfacetype)
+        self.bigendian = Endian.BIG if self.pymodbus35plus else Endian.Big  # type:ignore[attr-defined]
+        self.lilendian = Endian.LITTLE if self.pymodbus35plus else Endian.Little  # type:ignore[attr-defined]
         self.tags = self._load_tags(tag_filepath)
         self.active_addresses = self._get_address_ranges(self.tags)
 
@@ -425,13 +431,48 @@ class ClickPLC(AsyncioModbusClient):
         address = 28672 + 2 * (start - 1)
         count = 2 * (1 if end is None else (end - start + 1))
         registers = await self.read_registers(address, count)
-        # pack the pairs of 16-bit registers (little-endian) and then unpack as 32-byte floats
-        packed = struct.pack(f'<{count}H', *registers)
-        values = struct.unpack(f'<{count // 2}f', packed)
-        if count == 2:
-            return values[0]
-        return {f'df{start + n}': v
-                for n, v in enumerate(values)}
+        decoder = BinaryPayloadDecoder.fromRegisters(registers,
+                                                     byteorder=self.bigendian,
+                                                     wordorder=self.lilendian)
+        if end is None:
+            return decoder.decode_32bit_float()
+        return {f'df{n}': decoder.decode_32bit_float() for n in range(start, end + 1)}
+    
+    async def _get_xd(self, start: int, end: int | None) -> dict: 
+        """Read XD registers. Called by `get`."""
+        if start < 1 or start > 8:
+            raise ValueError('YD must be in [1, 8].')
+        if end is not None and (end < 1 or end > 500):
+            raise ValueError('YD end must be in [1, 8].')
+        address = 57344 + 2 * (start - 1)
+        count = 1 if end is None else (end - start + 1)
+        registers = await self.read_registers(address, count)
+        if not registers or len(registers) < count :
+            raise ValueError("Failed to read correct number of registers.")
+
+        decoder = BinaryPayloadDecoder.fromRegisters(registers,
+                                                     byteorder=self.bigendian,
+                                                     wordorder=self.lilendian)
+        if end is None : return decoder.decode_16bit_uint()
+        return {f'td{n}' : decoder.decode_16bit_uint() for n in range(start, end + 1)}
+    
+    async def _get_yd(self, start: int, end: int | None) -> dict: 
+        """Read YD registers. Called by `get`."""
+        if start < 1 or start > 8:
+            raise ValueError('YD must be in [1, 8].')
+        if end is not None and (end < 1 or end > 500):
+            raise ValueError('YD end must be in [1, 8].')
+        address = 57856 + 2 * (start - 1)
+        count = 1 if end is None else (end - start + 1)
+        registers = await self.read_registers(address, count)
+        if not registers or len(registers) < count :
+            raise ValueError("Failed to read correct number of registers.")
+
+        decoder = BinaryPayloadDecoder.fromRegisters(registers,
+                                                     byteorder=self.bigendian,
+                                                     wordorder=self.lilendian)
+        if end is None : return decoder.decode_16bit_uint()
+        return {f'td{n}' : decoder.decode_16bit_uint() for n in range(start, end + 1)}
 
     async def _get_td(self, start: int, end: int | None) -> dict | int:
         """Read TD registers. Called by `get`.
@@ -698,6 +739,25 @@ class ClickPLC(AsyncioModbusClient):
             raise ValueError('Data list longer than available addresses.')
         await self.write_registers(address, values=data)
 
+    async def _set_yd(self, start: int, data: list[int]):
+        """Set YD registers. Called by `set`."""
+        if start < 1 or start > 8:
+            raise ValueError("YD must bein [1, 8]")
+        address = 57856 + 2 * (start - 1)
+
+        if len(data) > 8 - start + 1 :
+            raise ValueError("Data list is longer than available addresses.")
+        
+        # pymodbus is expecting list[uint_16]
+        # convert each hex??
+        values: list[bytes] = []
+        for datum in data:
+            packed_4_bytes = struct.pack('<i', datum)  # pack int_32
+            values.extend(struct.unpack('<HH', packed_4_bytes))  # unpack 2x uint_16
+
+        await self.write_registers(address, values)
+        return
+        
     async def _set_td(self, start: int, data: list[int]):
         """Set TD registers. Called by `set`.
 
@@ -714,6 +774,25 @@ class ClickPLC(AsyncioModbusClient):
         values = [d & 0xffff for d in data]  # two's complement
 
         await self.write_registers(address, values)
+
+    async def _set_ctd(self, start: int, data: list[int]):
+        """Set CTD registers. Called by `set`."""
+        if start < 1 or start > 250 :
+            raise ValueError("CTD must be in [1, 250].")
+        address = 49152 + 2 * (start - 1)
+        if len(data) > 250 - start + 1:
+            raise ValueError('Data list longer than available addresses.')
+        
+        # pymodbus is expectin list[uint_16]
+        # convert each int_32 into a uint_16 pair (little-endian) with the same byte value
+
+        values: list[bytes] = []
+        for datum in data :
+            packed_4_bytes = struct.pack('<i', datum)           # pack int_32
+            values.extend(struct.unpack('<HH', packed_4_bytes)) # unpack 2x uint_16
+
+        await self.write_registers(address, values)
+        return
 
     async def _set_sd(self, start: int, data: list[int]):
         """Set writable SD registers. Called by `set`.
