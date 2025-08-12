@@ -27,7 +27,7 @@ class ClickPLC(AsyncioModbusClient):
     abstracting corner cases and providing a simple asynchronous interface.
     """
 
-    data_types: ClassVar[dict] = {
+    data_types: ClassVar[dict[str, str]] = {
         'x': 'bool',     # Input point
         'y': 'bool',     # Output point
         'c': 'bool',     # (C)ontrol relay
@@ -112,8 +112,10 @@ class ClickPLC(AsyncioModbusClient):
         else:
             start, end = address, None
         i = next(i for i, s in enumerate(start) if s.isdigit())
-        category, start_index = start[:i].lower(), int(start[i:])
-        end_index = None if end is None else int(end[i:])
+
+        category = start[:i].lower()
+        start_index = 0.5 if start[i:].lower() == "0u" else int(start[i:])
+        end_index = 0.5 if end is not None and end[i:].lower() == "0u" else None if end is None else int(end[i:])
 
         if end_index is not None and end_index <= start_index:
             raise ValueError("End address must be greater than start address.")
@@ -141,19 +143,44 @@ class ClickPLC(AsyncioModbusClient):
         """
         if address in self.tags:
             address = self.tags[address]['id']
+        # if only one piece of data was sent in, just make it a list anyway.
         if not isinstance(data, list):
             data = [data]
 
-        i = next(i for i, s in enumerate(address) if s.isdigit())
-        category, index = address[:i].lower(), int(address[i:])
+        # this will find the first digit in the address
+        #   to divide it into the "letter" part and the "number" part
+        #   the problem is, we have to put some special stuff in here
+        #   to check for xd0u or yd0u. i'm just going to hard-code
+        #   these in and hope that it doesn't ever change ever!
+        if address.lower() in ('xd0u', 'yd0u'):
+            category = address[0:2]
+            index = 0.5
+        else:
+            i = next(i for i, s in enumerate(address) if s.isdigit())
+            category, index = address[:i].lower(), int(address[i:])
+
+        # check to make sure that the category ("X", "Y", "DS", etc) is valud
         if category not in self.data_types:
-            raise ValueError(f"{category} currently unsupported.")
+            raise ValueError(f"{category} is not a valid category. Did you spell it right?")
+
+        # remove the "16"s and "32"s from int16s and int32s.
         data_type = self.data_types[category].rstrip(digits)
+
+        # go through all the data
         for datum in data:
+            # if an int was passed in and we need a float, this is a pretty easy fix.
             if type(datum) == int and data_type == 'float':  # noqa: E721
                 datum = float(datum)
+
+            # however, we aren't going to handle any other type switching.
+            #   using pydoc.locate, we can turn something like
+            #   the string "float" into the actual type `float`.
+            #   personally, i wonder how long that .locate() takes, we
+            #   could just run it once. it's probably fine.
             if type(datum) != pydoc.locate(data_type):  # noqa: E721
                 raise ValueError(f"Expected {address} as a {data_type}.")
+
+        # now call the correct set function based on the category.
         return await getattr(self, '_set_' + category)(index, data)
 
     async def _get_x(self, start: int, end: int | None) -> dict:
@@ -440,39 +467,113 @@ class ClickPLC(AsyncioModbusClient):
     
     async def _get_xd(self, start: int, end: int | None) -> dict: 
         """Read XD registers. Called by `get`."""
-        if start < 1 or start > 8:
-            raise ValueError('YD must be in [1, 8].')
-        if end is not None and (end < 1 or end > 500):
-            raise ValueError('YD end must be in [1, 8].')
-        address = 57344 + 2 * (start - 1)
-        count = 1 if end is None else (end - start + 1)
-        registers = await self.read_registers(address, count)
+        # check ranges
+        if start < 0 or start > 8:
+            raise ValueError('YD must be in [0, 8].')
+        if end is not None and (end < 0 or end > 8):
+            raise ValueError('YD end must be in [0, 8].')
+        # calculate address
+        address = int(57344 + 2 * (start))
+
+        # see documentation for `self.u_index()`
+        _adjusted_start = self.u_index(start)
+        count = 1 if end is None else (self.u_index(end) - _adjusted_start + 1)
+
+        # ok so that count variable is getting used in two places.
+        #   here, where we're determining how many registers to read,
+        #   and at the bottom of the function, where we determine how many
+        #   to spit back out at the user. the problem is, there's a blank address
+        #   between each of these items - except between 0 and 1. that's 0u.
+        _addresses = ("0", "0u", "1", "2", "3", "4", "5", "6", "7", "8")
+        # at this point we have the adjusted_start, so we can just say "how
+        #   many numbers past 1 are there?"
+
+        _adjusted_count = int((end - start) * 2 + 1) if end is not None else 1
+        registers = await self.read_registers(address, _adjusted_count)
         if not registers or len(registers) < count :
             raise ValueError("Failed to read correct number of registers.")
 
         decoder = BinaryPayloadDecoder.fromRegisters(registers,
                                                      byteorder=self.bigendian,
                                                      wordorder=self.lilendian)
-        if end is None : return decoder.decode_16bit_uint()
-        return {f'td{n}' : decoder.decode_16bit_uint() for n in range(start, end + 1)}
-    
-    async def _get_yd(self, start: int, end: int | None) -> dict: 
+        # this still works - it's just one value
+        if end is None:
+            return decoder.decode_16bit_uint()
+
+        # honestly this is a complete mess and i should come back and make it not nasty
+        _values: dict[str, int] = {}
+
+        # if the start is yd0 or yd0u, we need some kind of special case
+        _start_false = start
+        while _start_false < 1 :
+            n = int(_start_false * 2)
+            _values[f'xd{_addresses[n]}'] = decoder.decode_16bit_uint()
+            _start_false += 0.5
+
+        # otherwise go through all the other ones, store the good uint_16
+        #   and decode the bad one.
+        if end >= 1:
+            for n in range(max(_adjusted_start, 2), _adjusted_start + count):
+                _values[f'xd{_addresses[n]}'] = decoder.decode_16bit_uint()
+                if n != _adjusted_start + count - 1 :
+                    decoder.decode_16bit_uint()
+
+        return _values
+
+    async def _get_yd(self, start: int | float, end: int | float | None) -> dict:
         """Read YD registers. Called by `get`."""
-        if start < 1 or start > 8:
-            raise ValueError('YD must be in [1, 8].')
-        if end is not None and (end < 1 or end > 500):
-            raise ValueError('YD end must be in [1, 8].')
-        address = 57856 + 2 * (start - 1)
-        count = 1 if end is None else (end - start + 1)
-        registers = await self.read_registers(address, count)
+        # check ranges
+        if start < 0 or start > 8:
+            raise ValueError('YD must be in [0, 8].')
+        if end is not None and (end < 0 or end > 8):
+            raise ValueError('YD end must be in [0, 8].')
+        # calculate address
+        address = int(57856 + 2 * (start))
+
+        # see documentation for `self.u_index()`
+        _adjusted_start = self.u_index(start)
+        count = 1 if end is None else (self.u_index(end) - _adjusted_start + 1)
+
+        # ok so that count variable is getting used in two places.
+        #   here, where we're determining how many registers to read,
+        #   and at the bottom of the function, where we determine how many
+        #   to spit back out at the user. the problem is, there's a blank address
+        #   between each of these items - except between 0 and 1. that's 0u.
+        _addresses = ("0", "0u", "1", "2", "3", "4", "5", "6", "7", "8")
+        # at this point we have the adjusted_start, so we can just say "how
+        #   many numbers past 1 are there?"
+
+        _adjusted_count = int((end - start) * 2 + 1) if end is not None else 1
+        registers = await self.read_registers(address, _adjusted_count)
         if not registers or len(registers) < count :
             raise ValueError("Failed to read correct number of registers.")
 
         decoder = BinaryPayloadDecoder.fromRegisters(registers,
                                                      byteorder=self.bigendian,
                                                      wordorder=self.lilendian)
-        if end is None : return decoder.decode_16bit_uint()
-        return {f'td{n}' : decoder.decode_16bit_uint() for n in range(start, end + 1)}
+        # this still works - it's just one value
+        if end is None:
+            return decoder.decode_16bit_uint()
+
+        # honestly this is a complete mess and i should come back and make it not nasty
+        _values: dict[str, int] = {}
+
+        # if the start is yd0 or yd0u, we need some kind of special case
+        _start_false = start
+        while _start_false < 1 :
+            n = int(_start_false * 2)
+            _values[f'yd{_addresses[n]}'] = decoder.decode_16bit_uint()
+            _start_false += 0.5
+
+        # otherwise go through all the other ones, store the good uint_16
+        #   and decode the bad one.
+        if end >= 1:
+            for n in range(max(_adjusted_start, 2), _adjusted_start + count):
+                _values[f'yd{_addresses[n]}'] = decoder.decode_16bit_uint()
+                if n != _adjusted_start + count - 1 :
+                    decoder.decode_16bit_uint()
+
+        return _values
 
     async def _get_td(self, start: int, end: int | None) -> dict | int:
         """Read TD registers. Called by `get`.
@@ -741,23 +842,74 @@ class ClickPLC(AsyncioModbusClient):
 
     async def _set_yd(self, start: int, data: list[int]):
         """Set YD registers. Called by `set`."""
-        if start < 1 or start > 8:
-            raise ValueError("YD must bein [1, 8]")
-        address = 57856 + 2 * (start - 1)
-
-        if len(data) > 8 - start + 1 :
-            raise ValueError("Data list is longer than available addresses.")
-        
-        # pymodbus is expecting list[uint_16]
-        # convert each hex??
-        values: list[bytes] = []
+        # make sure the values are correct
+        #   side note: yd0u will come in with start == 0.5
+        if start < 0 or start > 8:
+            raise ValueError("YD must be in [0, 8]")
+        # make sure all the data is an int16
         for datum in data:
-            packed_4_bytes = struct.pack('<i', datum)  # pack int_32
-            values.extend(struct.unpack('<HH', packed_4_bytes))  # unpack 2x uint_16
+            if datum.bit_length() > 16:
+                raise ValueError(f"Datum {datum} is longer than 16 bits. YD registers cannot hold more than 16 bits.")
+        # get the correct starting address
+        address = int(57856 + 2 * (start))
 
+        # i am going to do this horribly. anyone who comes after me and wants
+        #   to fix it is absolutely welcome to.
+        horrible_index = self.u_index(start)
+        if len(data) > 10 - horrible_index:
+            raise ValueError(
+                "Data list is longer than available addresses. " +
+                "Make sure you're accounting for YD0u!"
+                )
+
+        # yd sucks. sorry i have to do it like this
+        values: list[int] = []
+
+
+
+        for i, datum in enumerate(data):
+            if (start == 0 and i in (0, 1)) or (start == 0.5 and i == 0):
+                values.append(datum)
+            else :
+                values.extend((datum, 0x0000))
+        # remove the last (0x0000). is this necessary? maybe not. i just don't
+        #   want to run into a modbus issue where i'm trying to write something
+        #   past YD8 (so technically YD8u), and it decides to go bananas.
+        values.pop()
         await self.write_registers(address, values)
         return
-        
+
+    @staticmethod
+    def u_index(x: int | float) -> int:
+        """Here's the deal with this method.
+
+        I had to denote for XD and YD if somebody was trying to get/set
+        XD0u or YD0u. So if that happens, then I pass through 0.5 as the
+        start or end. The problem is, this messes with trying to figure out how many
+        values are to be returned / to be set. So this just orders them
+        in a normal `int` value.
+
+        ```
+        u_index(0)
+        >>> 0
+        u_index(0.5)
+        >>> 1
+        u_index(1)
+        >>> 2
+        u_index(2)
+        >>> 3
+        # etc...
+        ```
+
+        """
+        if x == 0 :
+            return 0
+        if x == 0.5:
+            return 1
+        if isinstance(x, float) :
+            raise ValueError(f"You cannot send {x} into 'u_index'. It is a float that is not 0.5.")
+        return x + 1
+
     async def _set_td(self, start: int, data: list[int]):
         """Set TD registers. Called by `set`.
 
