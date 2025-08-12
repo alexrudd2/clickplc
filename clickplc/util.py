@@ -7,14 +7,14 @@ Copyright (C) 2024 Alex Ruddick
 from __future__ import annotations
 
 import asyncio
-from enum import Enum
 from typing import Any, Literal
 
 try:
-    from pymodbus.client import AsyncModbusTcpClient, AsyncModbusSerialClient  # 3.x
+    from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient  # 3.x
 except ImportError:  # 2.4.x - 2.5.x
     from pymodbus.client.asynchronous.async_io import (  # type: ignore
-        ReconnectingAsyncioModbusTcpClient, ReconnectingAsyncioModbusSerialClient
+        ReconnectingAsyncioModbusSerialClient,
+        ReconnectingAsyncioModbusTcpClient,
     )
 import pymodbus.exceptions
 
@@ -39,7 +39,7 @@ class AsyncioModbusClient:
         elif interfacetype == "TCP":  # 2.x
             self.client = ReconnectingAsyncioModbusTcpClient()  # pyright: ignore [reportPossiblyUnboundVariable]
         elif interfacetype == "Serial":
-            
+
             self.client = ReconnectingAsyncioModbusSerialClient() # pyright: ignore [reportPossiblyUnboundVariable]
         self.lock = asyncio.Lock()
         self.connectTask = asyncio.create_task(self._connect())
@@ -89,7 +89,7 @@ class AsyncioModbusClient:
         r = await self._request('read_holding_registers', address=address, count=count)
         registers += r.registers
         return registers
-    
+
 
     def _convert_from_registers(
             self,

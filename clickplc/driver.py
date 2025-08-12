@@ -13,7 +13,7 @@ import pydoc
 import struct
 from collections import defaultdict
 from string import digits
-from typing import Any, ClassVar, Literal, Union, overload
+from typing import Any, ClassVar, Literal, overload
 
 from pymodbus.constants import Endian
 
@@ -37,7 +37,7 @@ class ClickPLC(AsyncioModbusClient):
         'ds': 'int16',   # (D)ata register (s)ingle
         'dd': 'int32',   # (D)ata register, (d)ouble
         'dh': 'int16',   # (D)ata register, (h)ex
-        'df': 'float',   # (D)ata register (f)loating 
+        'df': 'float',   # (D)ata register (f)loating
         'xd': 'int32',   # Input Register
         'yd': 'int32',   # Output Register
         'td': 'int16',   # (T)imer register
@@ -394,7 +394,7 @@ class ClickPLC(AsyncioModbusClient):
         # NOTE: could use client.convert_to_registers
         return {f'sc{start + i}': bit for i, bit in enumerate(coils.bits) if i < count}
 
-    async def _get_ds(self, start: int, end: int | None) -> Union[dict[str, int], int]:
+    async def _get_ds(self, start: int, end: int | None) -> dict[str, int] | int:
         """Read DS registers. Called by `get`.
 
         DS entries start at Modbus address 0 (1 in the Click software's
@@ -408,15 +408,17 @@ class ClickPLC(AsyncioModbusClient):
         address = 0 + start - 1
         count = 1 if end is None else (end - start + 1)
         registers = await self.read_registers(address, count)
-        register_values: int | list[int] = self.client.convert_from_registers(registers, data_type=self.client.DATATYPE.INT16) # type: ignore
+        register_values: int | list[int] = self.client.convert_from_registers(
+                registers, data_type=self.client.DATATYPE.INT16
+            ) # type: ignore
         # one item was returned
         if isinstance(register_values, int):
             return register_values
-    
+
         # more than one item is returned
         if end is not None:
             return {f'ds{n}': register_values[_index] for _index, n in enumerate(range(start, end + 1))}
-        raise ValueError(f"PyModbus has failed to return the correct type.")
+        raise ValueError("PyModbus has failed to return the correct type.")
 
     async def _get_dd(self, start: int, end: int | None) -> dict | int:
         if start < 1 or start > 1000:
@@ -664,7 +666,6 @@ class ClickPLC(AsyncioModbusClient):
             raise Exception("You are requesting more text than has been put into the Click PLC.")
 
         r = ''
-        i = 0
         for _ in range(count):
             msb = register_values[2 * _]
             lsb = register_values[2 * _ + 1]
@@ -930,7 +931,7 @@ class ClickPLC(AsyncioModbusClient):
         address = 49152 + 2 * (start - 1)
         if len(data) > 250 - start + 1:
             raise ValueError('Data list longer than available addresses.')
-        
+
         # pymodbus is expectin list[uint_16]
         # convert each int_32 into a uint_16 pair (little-endian) with the same byte value
 
