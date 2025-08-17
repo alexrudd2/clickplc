@@ -456,7 +456,7 @@ class ClickPLC(AsyncioModbusClient):
         return {f'td{start + i}': v for i, v in enumerate(values)}
 
 
-    async def _get_ctd(self, start: int, end: int | None) -> dict:
+    async def _get_ctd(self, start: int, end: int | None) -> dict | int:
         """Read CTD registers. Called by `get`.
 
         CTD entries start at Modbus address 449152 (449153 in the Click software's
@@ -474,6 +474,8 @@ class ClickPLC(AsyncioModbusClient):
         # pack the pairs of 16-bit registers (little-endian) and then unpack as 32-byte signed ints
         packed = struct.pack(f'<{count}H', *registers)
         values = struct.unpack(f'<{count // 2}i', packed)
+        if count == 2:
+            return values[0]
         return {f'ctd{start + n}': v for n, v in enumerate(values)}
 
     async def _get_sd(self, start: int, end: int | None) -> dict | int:

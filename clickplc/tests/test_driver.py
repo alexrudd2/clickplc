@@ -73,6 +73,8 @@ def expected_tags():
         'VI_101': {'address': {'start': 428685}, 'id': 'DF7', 'type': 'float'},
         'PLC_Error_Code': {'address': {'start': 361441}, 'id': 'SD1', 'type': 'int16'},
         'timer': {'address': {'start': 449153}, 'id': 'CTD1', 'type': 'int32'},
+        'timer2': {'address': {'start': 449155}, 'id': 'CTD2', 'type': 'int32'},
+
     }
 
 
