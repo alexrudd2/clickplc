@@ -74,9 +74,7 @@ def expected_tags():
         'PLC_Error_Code': {'address': {'start': 361441}, 'id': 'SD1', 'type': 'int16'},
         'timer': {'address': {'start': 449153}, 'id': 'CTD1', 'type': 'int32'},
         'timer2': {'address': {'start': 449155}, 'id': 'CTD2', 'type': 'int32'},
-
     }
-
 
 def test_driver_cli(capsys):
     """Confirm the commandline interface works without a tags file."""
@@ -85,7 +83,6 @@ def test_driver_cli(capsys):
     assert 'x816' in captured.out
     assert 'c100' in captured.out
     assert 'df100' in captured.out
-
 
 @mock.patch('clickplc.ClickPLC', MockClickPLC)
 def test_driver_cli_tags_mock(capsys):
@@ -97,7 +94,6 @@ def test_driver_cli_tags_mock(capsys):
     assert 'TI_101' in captured.out
     with pytest.raises(SystemExit):
         command_line([ADDRESS, 'tags', 'bogus'])
-
 
 def test_driver_cli_tags(capsys):
     """Confirm the commandline interface works with a tags file."""
