@@ -42,7 +42,7 @@ class ClickPLC(AsyncioModbusClient):
         'txt': 'str',    # ASCII Text
     }
 
-    def __init__(self, address, tag_filepath='', timeout=1):
+    def __init__(self, address: str, tag_filepath='', timeout=1):
         """Initialize PLC connection and data structure.
 
         Args:
@@ -117,7 +117,7 @@ class ClickPLC(AsyncioModbusClient):
             raise ValueError("Inter-category ranges are unsupported.")
         return await getattr(self, '_get_' + category)(start_index, end_index)
 
-    async def set(self, address: str, data):
+    async def set(self, address: str, data) -> None:
         """Set values on the ClickPLC.
 
         Args:
@@ -148,7 +148,7 @@ class ClickPLC(AsyncioModbusClient):
                 datum = float(datum)
             if type(datum) != pydoc.locate(data_type):  # noqa: E721
                 raise ValueError(f"Expected {address} as a {data_type}.")
-        return await getattr(self, '_set_' + category)(index, data)
+        await getattr(self, '_set_' + category)(index, data)
 
     async def _get_x(self, start: int, end: int | None) -> dict:
         """Read X addresses. Called by `get`.
@@ -537,7 +537,7 @@ class ClickPLC(AsyncioModbusClient):
             r = r[1:]  # if starting on the last byte of a 16-bit register, discard the first MSB
         return {f'txt{start}-txt{end}': r}
 
-    async def _set_y(self, start: int, data: list[bool]):
+    async def _set_y(self, start: int, data: list[bool]) -> None:
         """Set Y addresses. Called by `set`.
 
         For more information on the quirks of Y coils, read the `_get_y`
@@ -562,7 +562,7 @@ class ClickPLC(AsyncioModbusClient):
         values += data
         await self.write_coils(coil, values)
 
-    async def _set_c(self, start: int, data: list[bool]):
+    async def _set_c(self, start: int, data: list[bool]) -> None:
         """Set C addresses. Called by `set`.
 
         For more information on the quirks of C coils, read the `_get_c`
@@ -576,7 +576,7 @@ class ClickPLC(AsyncioModbusClient):
             raise ValueError('Data list longer than available addresses.')
         await self.write_coils(coil, data)
 
-    async def _set_sc(self, start: int, data: list[bool]):
+    async def _set_sc(self, start: int, data: list[bool]) -> None:
         """Set SC addresses. Called by `set`.
 
         SC entries start at 61440 (61441 in the Click software's 1-indexed
@@ -621,7 +621,7 @@ class ClickPLC(AsyncioModbusClient):
 
         await self.write_coils(coil, data)
 
-    async def _set_df(self, start: int, data: list[float]):
+    async def _set_df(self, start: int, data: list[float]) -> None:
         """Set DF registers. Called by `set`.
 
         The ClickPLC is little endian, but on registers ("words") instead
@@ -647,7 +647,7 @@ class ClickPLC(AsyncioModbusClient):
 
         await self.write_registers(address, values)
 
-    async def _set_ds(self, start: int, data: list[int]):
+    async def _set_ds(self, start: int, data: list[int]) -> None:
         """Set DS registers. Called by `set`.
 
         See _get_ds for more information.
@@ -663,7 +663,7 @@ class ClickPLC(AsyncioModbusClient):
 
         await self.write_registers(address, values)
 
-    async def _set_dd(self, start: int, data: list[int]):
+    async def _set_dd(self, start: int, data: list[int]) -> None:
         """Set DD registers. Called by `set`.
 
         See _get_dd for more information.
@@ -684,7 +684,7 @@ class ClickPLC(AsyncioModbusClient):
 
         await self.write_registers(address, values)
 
-    async def _set_dh(self, start: int, data: list[int]):
+    async def _set_dh(self, start: int, data: list[int]) -> None:
         """Set DH registers. Called by `set`.
 
         See _get_dh for more information.
@@ -697,7 +697,7 @@ class ClickPLC(AsyncioModbusClient):
             raise ValueError('Data list longer than available addresses.')
         await self.write_registers(address, values=data)
 
-    async def _set_td(self, start: int, data: list[int]):
+    async def _set_td(self, start: int, data: list[int]) -> None:
         """Set TD registers. Called by `set`.
 
         See _get_td for more information.
@@ -714,7 +714,7 @@ class ClickPLC(AsyncioModbusClient):
 
         await self.write_registers(address, values)
 
-    async def _set_sd(self, start: int, data: list[int]):
+    async def _set_sd(self, start: int, data: list[int]) -> None:
         """Set writable SD registers. Called by `set`.
 
         SD entries start at Modbus address 61440 (61441 in the Click software's
@@ -740,7 +740,7 @@ class ClickPLC(AsyncioModbusClient):
             112, 113, 114, 140, 141, 142, 143, 144, 145, 146, 147, 214, 215
         )
 
-        def validate_address(address: int):
+        def validate_address(address: int) -> None:
             if address not in writable_sd_addresses:
                 raise ValueError(f"SD{address} is not writable. Only specific SD registers are writable.")
         for idx, _ in enumerate(data):
@@ -756,7 +756,7 @@ class ClickPLC(AsyncioModbusClient):
 
         await self.write_registers(address, values)
 
-    async def _set_txt(self, start: int, data: list[str]):
+    async def _set_txt(self, start: int, data: list[str]) -> None:
         """Set TXT registers. Called by `set`.
 
         See _get_txt for more information.
@@ -816,7 +816,7 @@ class ClickPLC(AsyncioModbusClient):
             if not data['type']:
                 raise TypeError(
                     f"{data['id']} is an unsupported data type. Open a "
-                    "github issue at numat/clickplc to get it added."
+                    "github issue at alexrudd2/clickplc to get it added."
                 )
         sorted_tags = {k: parsed[k] for k in
                        sorted(parsed, key=lambda k: parsed[k]['address']['start'])}

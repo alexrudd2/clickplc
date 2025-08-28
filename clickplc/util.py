@@ -83,11 +83,11 @@ class AsyncioModbusClient:
         registers += r.registers
         return registers
 
-    async def write_coils(self, address: int, values):
+    async def write_coils(self, address: int, values) -> None:
         """Write modbus coils."""
         await self._request('write_coils', address=address, values=values)
 
-    async def write_registers(self, address: int, values):
+    async def write_registers(self, address: int, values) -> None:
         """Write modbus registers.
 
         The Modbus protocol doesn't allow requests longer than 250 bytes
@@ -120,7 +120,7 @@ class AsyncioModbusClient:
             except (asyncio.TimeoutError, pymodbus.exceptions.ConnectionException) as e:
                 raise TimeoutError("Not connected to PLC.") from e
 
-    async def _close(self):
+    async def _close(self) -> None:
         """Close the TCP connection."""
         if self.pymodbus33plus:
             self.client.close()  # 3.3.x
