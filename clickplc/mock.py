@@ -84,4 +84,4 @@ class ClickPLC(realClickPLC):
             for i, d in enumerate(values):
                 self._registers[address + i] = d.to_bytes(length=2, byteorder='big')
             return WriteMultipleRegistersResponse(address, values)
-        return NotImplementedError(f'Unrecognised method: {method}')
+        raise NotImplementedError(f'Unrecognised method: {method}')
