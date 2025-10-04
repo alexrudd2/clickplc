@@ -25,7 +25,7 @@ class ClickPLC(AsyncioModbusClient):
     abstracting corner cases and providing a simple asynchronous interface.
     """
 
-    data_types: ClassVar[dict] = {
+    data_types: ClassVar[dict[str, str]] = {
         'x': 'bool',     # Input point
         'y': 'bool',     # Output point
         'c': 'bool',     # (C)ontrol relay
