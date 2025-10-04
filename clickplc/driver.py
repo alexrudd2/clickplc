@@ -737,7 +737,7 @@ class ClickPLC(AsyncioModbusClient):
         """
         writable_sd_addresses = (
             29, 31, 32, 34, 35, 36, 40, 41, 42, 50, 51, 60, 61, 106, 107, 108,
-            112, 113, 114, 140, 141, 142, 143, 144, 145, 146, 147, 214, 215
+            112, 113, 114, 140, 141, 142, 143, 144, 145, 146, 147, 214, 215,
         )
 
         def validate_address(address: int) -> None:
@@ -804,7 +804,7 @@ class ClickPLC(AsyncioModbusClient):
                 'id': row['Address'],
                 'comment': row['Address Comment'],
                 'type': self.data_types.get(
-                    row['Address'].rstrip(digits).lower()
+                    row['Address'].rstrip(digits).lower(),
                 ),
             }
             for row in csv.DictReader(csv_data)
@@ -816,7 +816,7 @@ class ClickPLC(AsyncioModbusClient):
             if not data['type']:
                 raise TypeError(
                     f"{data['id']} is an unsupported data type. Open a "
-                    "github issue at alexrudd2/clickplc to get it added."
+                    "github issue at alexrudd2/clickplc to get it added.",
                 )
         sorted_tags = {k: parsed[k] for k in
                        sorted(parsed, key=lambda k: parsed[k]['address']['start'])}
