@@ -1,7 +1,7 @@
 clickplc
 ========
 
-Python ≥3.8 driver and command-line tool for [Koyo Ethernet ClickPLCs](https://www.automationdirect.com/clickplcs).
+Python driver and command-line tool for [Koyo Ethernet ClickPLCs](https://www.automationdirect.com/clickplcs).
 
 <p align="center">
   <img src="https://www.automationdirect.com/microsites/clickplcs/images/expandedclick.jpg" />
@@ -11,7 +11,7 @@ Installation
 ============
 
 ```
-pip install clickplc
+uv pip install clickplc
 ```
 
 Usage
