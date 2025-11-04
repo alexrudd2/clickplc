@@ -31,8 +31,15 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)"
 ]
 
-[project.optional-dependencies]
-test = [
+[project.scripts]
+clickplc = "clickplc:command_line"
+
+[project.urls]
+Homepage = "https://github.com/alexrudd2/clickplc"
+Issues = "https://github.com/alexrudd2/clickplc/issues"
+
+[dependency-groups]
+dev = [
   'mypy>=1.18.2',
   'pytest',
   'pytest-cov',
@@ -40,13 +47,6 @@ test = [
   'ruff==0.14.3',
   'types-PyYAML',
 ]
-
-[project.scripts]
-clickplc = "clickplc:command_line"
-
-[project.urls]
-Homepage = "https://github.com/alexrudd2/clickplc"
-Issues = "https://github.com/alexrudd2/clickplc/issues"
 
 [tool.setuptools]
 packages = ["clickplc"]
