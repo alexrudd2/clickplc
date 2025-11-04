@@ -1,12 +1,11 @@
 """Test the driver correctly parses a tags file and responds with correct data."""
 import asyncio
-import contextlib
 from unittest import mock
 
 import pytest
 
 try:
-    from pymodbus.server import ModbusTcpServer
+    from pymodbus.server import ModbusTcpServer  # 3.0.x
 except ImportError:
     from pymodbus.server.async_io import ModbusTcpServer  # type: ignore[no-redef]
 
@@ -42,8 +41,7 @@ async def _sim():
     asyncio.ensure_future(server.serve_forever())  # noqa: RUF006
     await(asyncio.sleep(0))
     yield
-    with contextlib.suppress(AttributeError):  # 2.x
-        await server.shutdown()  # type: ignore
+    await server.shutdown()
 
 @pytest.fixture(scope='session')
 async def plc_driver():

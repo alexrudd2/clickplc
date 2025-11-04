@@ -8,13 +8,8 @@ from __future__ import annotations
 
 import asyncio
 
-try:
-    from pymodbus.client import AsyncModbusTcpClient  # 3.x
-except ImportError:  # 2.4.x - 2.5.x
-    from pymodbus.client.asynchronous.async_io import (  # type: ignore
-        ReconnectingAsyncioModbusTcpClient,
-    )
 import pymodbus.exceptions
+from pymodbus.client import AsyncModbusTcpClient  # 3.x
 
 
 class AsyncioModbusClient:
@@ -30,10 +25,7 @@ class AsyncioModbusClient:
         self.port = 5020 if address == '127.0.0.1' else 502  # pymodbus simulator is 127.0.0.1:5020
         self.timeout = timeout
         self._detect_pymodbus_version()
-        if self.pymodbus30plus:
-            self.client = AsyncModbusTcpClient(address, timeout=timeout, port=self.port)  # pyright: ignore [reportPossiblyUnboundVariable]
-        else:  # 2.x
-            self.client = ReconnectingAsyncioModbusTcpClient()  # pyright: ignore [reportPossiblyUnboundVariable]
+        self.client = AsyncModbusTcpClient(address, timeout=timeout, port=self.port)  # pyright: ignore [reportPossiblyUnboundVariable]
         self.lock = asyncio.Lock()
         self.connectTask = asyncio.create_task(self._connect())
 
@@ -56,10 +48,7 @@ class AsyncioModbusClient:
     async def _connect(self) -> None:
         """Start asynchronous reconnect loop."""
         try:
-            if self.pymodbus30plus:
-                await asyncio.wait_for(self.client.connect(), timeout=self.timeout)  # 3.x
-            else:  # 2.4.x - 2.5.x
-                await self.client.start(host=self.ip, port=self.port)  # type: ignore[attr-defined]
+            await asyncio.wait_for(self.client.connect(), timeout=self.timeout)  # 3.x
         except Exception as e:
             raise OSError(f"Could not connect to '{self.ip}'.") from e
 
@@ -124,7 +113,5 @@ class AsyncioModbusClient:
         """Close the TCP connection."""
         if self.pymodbus33plus:
             self.client.close()  # 3.3.x
-        elif self.pymodbus30plus:
+        else:
             await self.client.close()  # type: ignore  # 3.0.x - 3.2.x
-        else:  # 2.4.x - 2.5.x
-            self.client.stop()  # type: ignore[attr-defined]
