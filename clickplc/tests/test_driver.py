@@ -7,7 +7,7 @@ import pytest
 try:
     from pymodbus.server import ModbusTcpServer  # 3.0.x
 except ImportError:
-    from pymodbus.server.async_io import ModbusTcpServer  # type: ignore[no-redef]
+    from pymodbus.server.async_io import ModbusTcpServer  # type: ignore[import-not-found, no-redef]
 
 from clickplc import ClickPLC, command_line
 from clickplc.mock import ClickPLC as MockClickPLC
