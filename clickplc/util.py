@@ -7,10 +7,26 @@ Copyright (C) 2024 Alex Ruddick
 from __future__ import annotations
 
 import asyncio
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import pymodbus.exceptions
 from pymodbus.client import AsyncModbusTcpClient  # 3.x
 
+if TYPE_CHECKING:
+    try:  # pymodbus >= 3.8.x
+        from pymodbus.pdu.bit_message import ReadCoilsResponse, WriteMultipleCoilsResponse
+        from pymodbus.pdu.register_message import ReadHoldingRegistersResponse, WriteMultipleRegistersResponse
+    except ImportError:
+        try:
+            from pymodbus.pdu.bit_read_message import ReadCoilsResponse  # type: ignore
+            from pymodbus.pdu.bit_write_message import WriteMultipleCoilsResponse  # type: ignore
+            from pymodbus.pdu.register_read_message import ReadHoldingRegistersResponse  # type: ignore
+            from pymodbus.pdu.register_write_message import WriteMultipleRegistersResponse  # type: ignore
+        except ImportError:  # pymodbus < 3.7.0
+            from pymodbus.bit_read_message import ReadCoilsResponse  # type: ignore
+            from pymodbus.bit_write_message import WriteMultipleCoilsResponse  # type: ignore
+            from pymodbus.register_read_message import ReadHoldingRegistersResponse  # type: ignore
+            from pymodbus.register_write_message import WriteMultipleRegistersResponse  # type: ignore
 
 class AsyncioModbusClient:
     """A generic asyncio client.
@@ -88,6 +104,25 @@ class AsyncioModbusClient:
             address, values = address + 124, values[62:]
         await self._request('write_registers', address=address, values=values)
 
+    @overload
+    async def _request(
+        self, method: Literal["read_coils"], address: int, count: int,
+    ) -> ReadCoilsResponse: ...
+
+    @overload
+    async def _request(
+        self, method: Literal["write_coils"], address: int, values: Any,
+    ) -> WriteMultipleCoilsResponse: ...
+
+    @overload
+    async def _request(
+        self, method: Literal["read_holding_registers"], address: int, count: int,
+    ) -> ReadHoldingRegistersResponse: ...
+
+    @overload
+    async def _request(
+        self, method: Literal["write_registers"], address:int, values: Any,
+    ) -> WriteMultipleRegistersResponse: ...
     async def _request(self, method, *args, **kwargs):
         """Send a request to the device and awaits a response.
 
