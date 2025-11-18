@@ -35,7 +35,7 @@ class AsyncioModbusClient:
     including standard timeouts, async context manager, and queued requests.
     """
 
-    def __init__(self, address, timeout=1):
+    def __init__(self, address: str, timeout: float = 1):
         """Set up communication parameters."""
         self.ip = address
         self.port = 5020 if address == '127.0.0.1' else 502  # pymodbus simulator is 127.0.0.1:5020
@@ -64,15 +64,15 @@ class AsyncioModbusClient:
     async def _connect(self) -> None:
         """Start asynchronous reconnect loop."""
         try:
-            await asyncio.wait_for(self.client.connect(), timeout=self.timeout)  # 3.x
+            _ = await asyncio.wait_for(self.client.connect(), timeout=self.timeout)  # 3.x
         except Exception as e:
             raise OSError(f"Could not connect to '{self.ip}'.") from e
 
-    async def read_coils(self, address: int, count):
+    async def read_coils(self, address: int, count: int):
         """Read modbus output coils (0 address prefix)."""
         return await self._request('read_coils', address=address, count=count)
 
-    async def read_registers(self, address: int, count):
+    async def read_registers(self, address: int, count: int) -> list:
         """Read modbus registers.
 
         The Modbus protocol doesn't allow responses longer than 250 bytes
@@ -88,9 +88,9 @@ class AsyncioModbusClient:
         registers += r.registers
         return registers
 
-    async def write_coils(self, address: int, values) -> None:
+    async def write_coils(self, address: int, values: list[bool]) -> None:
         """Write modbus coils."""
-        await self._request('write_coils', address=address, values=values)
+        _ = await self._request('write_coils', address=address, values=values)
 
     async def write_registers(self, address: int, values) -> None:
         """Write modbus registers.
@@ -112,7 +112,7 @@ class AsyncioModbusClient:
 
     @overload
     async def _request(
-        self, method: Literal["write_coils"], address: int, values: Any,
+        self, method: Literal["write_coils"], address: int, values: list[bool],
     ) -> WriteMultipleCoilsResponse: ...
 
     @overload
