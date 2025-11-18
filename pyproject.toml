@@ -62,12 +62,10 @@ ignore = [
   "D104",  # Missing docstring in public package
   "D107",  # Missing docstring in __init__
 ]
-
 select = [
     "B",   # flake8-bugbear
     "C",   # complexity
     "D",   # docstrings
-    "COM", # trailing comma rules
     "E",   # pycodestyle errors
     "F",   # pyflakes
     "I",   # isort
@@ -85,6 +83,9 @@ convention = "pep257"
 
 [tool.ruff.lint.flake8-unused-arguments]
 ignore-variadic-names = true
+
+[tool.ruff.format]
+quote-style = "preserve"
 
 [tool.mypy]
 check_untyped_defs = true

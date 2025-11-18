@@ -34,12 +34,12 @@ async def _sim():
         di=ModbusSequentialDataBlock(0, [0] * 65536),  # Discrete Inputs
         co=ModbusSequentialDataBlock(0, [0] * 65536),  # Coils
         hr=ModbusSequentialDataBlock(0, [0] * 65536),  # Holding Registers
-        ir=ModbusSequentialDataBlock(0, [0] * 65536),   # Input Registers
+        ir=ModbusSequentialDataBlock(0, [0] * 65536),  # Input Registers
     )
     context = ModbusServerContext(store, single=True)
     server = ModbusTcpServer(context=context, address=("127.0.0.1", 5020))
     asyncio.ensure_future(server.serve_forever())  # noqa: RUF006
-    await(asyncio.sleep(0))
+    await asyncio.sleep(0)
     yield
     await server.shutdown()
 

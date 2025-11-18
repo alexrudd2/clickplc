@@ -104,6 +104,7 @@ class AsyncioModbusClient:
             address, values = address + 124, values[62:]
         await self._request('write_registers', address=address, values=values)
 
+    # fmt: off
     @overload
     async def _request(
         self, method: Literal["read_coils"], address: int, count: int,
@@ -123,6 +124,7 @@ class AsyncioModbusClient:
     async def _request(
         self, method: Literal["write_registers"], address:int, values: Any,
     ) -> WriteMultipleRegistersResponse: ...
+    # fmt: on
     async def _request(self, method, *args, **kwargs):
         """Send a request to the device and awaits a response.
 

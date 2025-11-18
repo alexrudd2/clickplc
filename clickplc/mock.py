@@ -26,7 +26,7 @@ except ImportError:
 
     class WriteMultipleCoilsResponse(MagicMock): ...  # type: ignore[no-redef] # noqa: D101
     @dataclass
-    class ReadHoldingRegistersResponse:   # type: ignore[no-redef] # noqa: D101
+    class ReadHoldingRegistersResponse:  # type: ignore[no-redef] # noqa: D101
         registers: list[int]
 
     class WriteMultipleRegistersResponse(MagicMock): ...  # type: ignore[no-redef] # noqa: D101
