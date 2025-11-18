@@ -6,27 +6,31 @@ Uses local storage instead of remote communications.
 Distributed under the GNU General Public License v2
 """
 from collections import defaultdict
+from dataclasses import dataclass
 from unittest.mock import MagicMock
 
 try:
     from pymodbus.pdu.bit_message import (
-        ReadCoilsResponse,
-        WriteMultipleCoilsResponse,
+        ReadCoilsResponse,  # type: ignore[reportAssignmentType]
+        WriteMultipleCoilsResponse,  # type: ignore[reportAssignmentType]
     )
-    from pymodbus.pdu.register_message import ReadHoldingRegistersResponse, WriteMultipleRegistersResponse
-    pymodbus38plus = True
+    from pymodbus.pdu.register_message import (
+        ReadHoldingRegistersResponse,  # type: ignore[reportAssignmentType]
+        WriteMultipleRegistersResponse,  # type: ignore[reportAssignmentType]
+    )
 except ImportError:
-    pymodbus38plus = False
-    try:  # pymodbus 3.7.x
-        from pymodbus.pdu.bit_read_message import ReadCoilsResponse  # type: ignore
-        from pymodbus.pdu.bit_write_message import WriteMultipleCoilsResponse  # type: ignore
-        from pymodbus.pdu.register_read_message import ReadHoldingRegistersResponse  # type: ignore
-        from pymodbus.pdu.register_write_message import WriteMultipleRegistersResponse  # type: ignore
-    except ImportError:
-        from pymodbus.bit_read_message import ReadCoilsResponse  # type: ignore
-        from pymodbus.bit_write_message import WriteMultipleCoilsResponse  # type: ignore
-        from pymodbus.register_read_message import ReadHoldingRegistersResponse  # type: ignore
-        from pymodbus.register_write_message import WriteMultipleRegistersResponse  # type: ignore
+
+    @dataclass
+    class ReadCoilsResponse:  # type: ignore[no-redef] # noqa: D101
+        bits: list[bool]
+
+    class WriteMultipleCoilsResponse(MagicMock): ...  # type: ignore[no-redef] # noqa: D101
+    @dataclass
+    class ReadHoldingRegistersResponse:   # type: ignore[no-redef] # noqa: D101
+        registers: list[int]
+
+    class WriteMultipleRegistersResponse(MagicMock): ...  # type: ignore[no-redef] # noqa: D101
+
 
 from clickplc.driver import ClickPLC as realClickPLC
 
@@ -53,18 +57,14 @@ class ClickPLC(realClickPLC):
         if self.pymodbus33plus:
             self.client.close = lambda: None
 
-    async def _request(self, method, address, count=0, values=(), **kwargs):
+    async def _request(self, method, address, count=0, values=()):  # type: ignore
         if method == 'read_coils':
             bits = [self._coils[address + i] for i in range(count)]
-            if pymodbus38plus:
-                return ReadCoilsResponse(bits=bits)
-            return ReadCoilsResponse(bits)  # type: ignore[arg-type]
+            return ReadCoilsResponse(bits=bits)
         elif method == 'read_holding_registers':
             registers = [int.from_bytes(self._registers[address + i], byteorder='big')
                          for i in range(count)]
-            if pymodbus38plus:
-                return ReadHoldingRegistersResponse(registers=registers)
-            return ReadHoldingRegistersResponse(registers)  # type: ignore[arg-type]
+            return ReadHoldingRegistersResponse(registers=registers)
         elif method == 'write_coils':
             for i, d in enumerate(values):
                 self._coils[address + i] = d
