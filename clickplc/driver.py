@@ -150,7 +150,12 @@ class ClickPLC(AsyncioModbusClient):
                 raise ValueError(f"Expected {address} as a {data_type}.")
         await getattr(self, '_set_' + category)(index, data)
 
-    async def _get_x(self, start: int, end: int | None) -> dict:
+
+    @overload
+    async def _get_x(self, start: int, end: None) -> bool: ...
+    @overload
+    async def _get_x(self, start: int, end: int) -> dict: ...
+    async def _get_x(self, start, end):
         """Read X addresses. Called by `get`.
 
         X entries start at 0 (1 in the Click software's 1-indexed
@@ -199,7 +204,11 @@ class ClickPLC(AsyncioModbusClient):
             current += 1
         return output
 
-    async def _get_y(self, start: int, end: int | None) -> dict:
+    @overload
+    async def _get_y(self, start: int, end: None) -> bool: ...
+    @overload
+    async def _get_y(self, start: int, end: int) -> dict: ...
+    async def _get_y(self, start, end):
         """Read Y addresses. Called by `get`.
 
         Y entries start at 8192 (8193 in the Click software's 1-indexed
