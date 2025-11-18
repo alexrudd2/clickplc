@@ -41,7 +41,7 @@ class AsyncioModbusClient:
         self.port = 5020 if address == '127.0.0.1' else 502  # pymodbus simulator is 127.0.0.1:5020
         self.timeout = timeout
         self._detect_pymodbus_version()
-        self.client = AsyncModbusTcpClient(address, timeout=timeout, port=self.port)  # pyright: ignore [reportPossiblyUnboundVariable]
+        self.client = AsyncModbusTcpClient(address, timeout=timeout, port=self.port)
         self.lock = asyncio.Lock()
         self.connectTask = asyncio.create_task(self._connect())
 
