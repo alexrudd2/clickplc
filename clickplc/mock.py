@@ -11,7 +11,6 @@ from unittest.mock import MagicMock
 try:
     from pymodbus.pdu.bit_message import (
         ReadCoilsResponse,
-        ReadDiscreteInputsResponse,
         WriteMultipleCoilsResponse,
     )
     from pymodbus.pdu.register_message import ReadHoldingRegistersResponse, WriteMultipleRegistersResponse
@@ -19,12 +18,12 @@ try:
 except ImportError:
     pymodbus38plus = False
     try:  # pymodbus 3.7.x
-        from pymodbus.pdu.bit_read_message import ReadCoilsResponse, ReadDiscreteInputsResponse  # type: ignore
+        from pymodbus.pdu.bit_read_message import ReadCoilsResponse  # type: ignore
         from pymodbus.pdu.bit_write_message import WriteMultipleCoilsResponse  # type: ignore
         from pymodbus.pdu.register_read_message import ReadHoldingRegistersResponse  # type: ignore
         from pymodbus.pdu.register_write_message import WriteMultipleRegistersResponse  # type: ignore
     except ImportError:
-        from pymodbus.bit_read_message import ReadCoilsResponse, ReadDiscreteInputsResponse  # type: ignore
+        from pymodbus.bit_read_message import ReadCoilsResponse  # type: ignore
         from pymodbus.bit_write_message import WriteMultipleCoilsResponse  # type: ignore
         from pymodbus.register_read_message import ReadHoldingRegistersResponse  # type: ignore
         from pymodbus.register_write_message import WriteMultipleRegistersResponse  # type: ignore
@@ -54,18 +53,12 @@ class ClickPLC(realClickPLC):
         if self.pymodbus33plus:
             self.client.close = lambda: None
 
-    async def _request(self, method, address, count=0, values=(), **kwargs):  # noqa: C901
+    async def _request(self, method, address, count=0, values=(), **kwargs):
         if method == 'read_coils':
             bits = [self._coils[address + i] for i in range(count)]
             if pymodbus38plus:
                 return ReadCoilsResponse(bits=bits)
             return ReadCoilsResponse(bits)  # type: ignore[arg-type]
-        if method == 'read_discrete_inputs':
-            bits = bits = [self._discrete_inputs[address + i]
-                           for i in range(count)]
-            if pymodbus38plus:
-                return ReadDiscreteInputsResponse(bits=bits)
-            return ReadDiscreteInputsResponse(bits)  # type: ignore[arg-type]
         elif method == 'read_holding_registers':
             registers = [int.from_bytes(self._registers[address + i], byteorder='big')
                          for i in range(count)]
