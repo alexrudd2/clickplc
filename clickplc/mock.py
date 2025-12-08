@@ -10,11 +10,11 @@ from dataclasses import dataclass
 from unittest.mock import MagicMock
 
 try:
-    from pymodbus.pdu.bit_message import (
+    from pymodbus.pdu.bit_message import (  # type: ignore[import-not-found]
         ReadCoilsResponse,  # type: ignore[reportAssignmentType]
         WriteMultipleCoilsResponse,  # type: ignore[reportAssignmentType]
     )
-    from pymodbus.pdu.register_message import (
+    from pymodbus.pdu.register_message import (  # type: ignore[import-not-found]
         ReadHoldingRegistersResponse,  # type: ignore[reportAssignmentType]
         WriteMultipleRegistersResponse,  # type: ignore[reportAssignmentType]
     )

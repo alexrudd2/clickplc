@@ -1,8 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
-  ],
+  "extends": ["config:recommended"],
   "timezone": "America/Chicago",
   "pre-commit": {
     "enabled": true
@@ -10,35 +8,27 @@
   "automergeType": "branch",
   "packageRules": [
     {
-      "matchManagers": [
-        "github-actions"
-      ],
+      "matchManagers": ["github-actions"],
       "automerge": true
     },
     {
       "automerge": true,
       "matchPackageNames": [
-        "/mypy/",
         "/pre-commit/",
         "/pytest/",
         "/ruff/",
-        "python-jsonschema/check-jsonschema"
+        "python-jsonschema/check-jsonschema",
+        "/zuban/"
       ]
     },
     {
       "groupName": "ruff",
-      "schedule": [
-        "on the first day of the month"
-      ],
-      "matchPackageNames": [
-        "/ruff/"
-      ]
+      "schedule": ["on the first day of the month"],
+      "matchPackageNames": ["/ruff/"]
     },
     {
       "rangeStrategy": "widen",
-      "matchPackageNames": [
-        "/pymodbus/"
-      ]
+      "matchPackageNames": ["/pymodbus/"]
     }
   ]
 }

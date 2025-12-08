@@ -14,8 +14,11 @@ from pymodbus.client import AsyncModbusTcpClient  # 3.x
 
 if TYPE_CHECKING:
     try:  # pymodbus >= 3.8.x
-        from pymodbus.pdu.bit_message import ReadCoilsResponse, WriteMultipleCoilsResponse
-        from pymodbus.pdu.register_message import ReadHoldingRegistersResponse, WriteMultipleRegistersResponse
+        from pymodbus.pdu.bit_message import ReadCoilsResponse, WriteMultipleCoilsResponse  # type: ignore
+        from pymodbus.pdu.register_message import (  # type: ignore
+            ReadHoldingRegistersResponse,
+            WriteMultipleRegistersResponse,
+        )
     except ImportError:
         try:
             from pymodbus.pdu.bit_read_message import ReadCoilsResponse  # type: ignore
