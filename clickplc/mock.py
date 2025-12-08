@@ -50,9 +50,9 @@ class ClickPLC(realClickPLC):
         self.tags = self._load_tags(tag_filepath)
         self.active_addresses = self._get_address_ranges(self.tags)
         self.client = AsyncClientMock()
-        self._coils = defaultdict(bool)
-        self._discrete_inputs = defaultdict(bool)
-        self._registers = defaultdict(bytes)
+        self._coils: dict[int, bool] = defaultdict(bool)
+        self._discrete_inputs: dict[int, bool] = defaultdict(bool)
+        self._registers: dict[int, bytes] = defaultdict(bytes)
         self._detect_pymodbus_version()
         if self.pymodbus33plus:
             self.client.close = lambda: None
