@@ -62,7 +62,6 @@ class AsyncioModbusClient:
         self.pymodbus30plus = major == 3
         self.pymodbus32plus = major == 3 and minor >= 2
         self.pymodbus33plus = major == 3 and minor >= 3
-        self.pymodbus35plus = major == 3 and minor >= 5
 
     async def _connect(self) -> None:
         """Start asynchronous reconnect loop."""
