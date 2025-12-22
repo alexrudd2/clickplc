@@ -364,7 +364,7 @@ class ClickPLC(AsyncioModbusClient):
         coils = await self.read_coils(start_coil, count)
         return {f'sc{start + i}': bit for i, bit in enumerate(coils.bits) if i < count}
 
-    async def _get_ds(self, start: int, end: int | None) -> dict | int:
+    async def _get_ds(self, start: int, end: int | None) -> dict[str, int] | int:
         """Read DS registers. Called by `get`.
 
         DS entries start at Modbus address 0 (1 in the Click software's
@@ -385,7 +385,7 @@ class ClickPLC(AsyncioModbusClient):
             return values[0]
         return {f'ds{start + i}': v for i, v in enumerate(values)}
 
-    async def _get_dd(self, start: int, end: int | None) -> dict | int:
+    async def _get_dd(self, start: int, end: int | None) -> dict[str, int] | int:
         if start < 1 or start > 1000:
             raise ValueError('DD must be in [1, 1000]')
         if end is not None and (end < 1 or end > 1000):
@@ -404,7 +404,7 @@ class ClickPLC(AsyncioModbusClient):
         return {f'dd{start + i}': v for i, v in enumerate(values)}
 
 
-    async def _get_dh(self, start: int, end: int | None) -> dict | int:
+    async def _get_dh(self, start: int, end: int | None) -> dict[str, int] | int:
         if start < 1 or start > 500:
             raise ValueError('DH must be in [1, 500]')
         if end is not None and (end < 1 or end > 500):
@@ -419,7 +419,7 @@ class ClickPLC(AsyncioModbusClient):
         return {f'dh{start + n}': int(v) for n, v in enumerate(registers)}
 
 
-    async def _get_df(self, start: int, end: int | None) -> dict | float:
+    async def _get_df(self, start: int, end: int | None) -> dict[str, float] | float:
         """Read DF registers. Called by `get`.
 
         DF entries start at Modbus address 28672 (28673 in the Click software's
@@ -442,7 +442,7 @@ class ClickPLC(AsyncioModbusClient):
         return {f'df{start + n}': v
                 for n, v in enumerate(values)}
 
-    async def _get_td(self, start: int, end: int | None) -> dict | int:
+    async def _get_td(self, start: int, end: int | None) -> dict[str, int] | int:
         """Read TD registers. Called by `get`.
 
         TD entries start at Modbus address 45056 (45057 in the Click software's
@@ -465,7 +465,7 @@ class ClickPLC(AsyncioModbusClient):
         return {f'td{start + i}': v for i, v in enumerate(values)}
 
 
-    async def _get_ctd(self, start: int, end: int | None) -> dict | int:
+    async def _get_ctd(self, start: int, end: int | None) -> dict[str, int] | int:
         """Read CTD registers. Called by `get`.
 
         CTD entries start at Modbus address 449152 (449153 in the Click software's
@@ -487,7 +487,7 @@ class ClickPLC(AsyncioModbusClient):
             return values[0]
         return {f'ctd{start + n}': v for n, v in enumerate(values)}
 
-    async def _get_sd(self, start: int, end: int | None) -> dict | int:
+    async def _get_sd(self, start: int, end: int | None) -> dict[str, int] | int:
         """Read SD registers. Called by `get`.
 
         SD entries start at Modbus address 361440 (361441 in the Click software's
