@@ -71,7 +71,7 @@ Currently, the following datatypes are supported:
 | dh  | uint16 | (D) register, (h)ex                      | RW |
 | df  | float  | (D)ata register, (f)loating point        | RW |
 | td  | int16  | (T)ime (d)elay register                  | RW |
-| ctd | int32  | (C)oun(t)er Current Values, (d)ouble int | R  |
+| ctd | int32  | (C)oun(t)er Current Values, (d)ouble int | RW |
 | sd  | int16  | (S)ystem (D)ata register                 | R* |
 | txt | char   | (T)e(xt)                                 | RW |
 

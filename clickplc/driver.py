@@ -723,6 +723,26 @@ class ClickPLC(AsyncioModbusClient):
 
         await self.write_registers(address, values)
 
+
+    async def _set_ctd(self, start: int, data: list[int]):
+        """Set CTD registers. Called by `set`."""
+        if start < 1 or start > 250 :
+            raise ValueError("CTD must be in [1, 250].")
+        address = 49152 + 2 * (start - 1)
+        if len(data) > 250 - start + 1:
+            raise ValueError('Data list longer than available addresses.')
+
+        # pymodbus is expectin list[uint_16]
+        # convert each int_32 into a uint_16 pair (little-endian) with the same byte value
+
+        values: list[bytes] = []
+        for datum in data :
+            packed_4_bytes = struct.pack('<i', datum)           # pack int_32
+            values.extend(struct.unpack('<HH', packed_4_bytes)) # unpack 2x uint_16
+
+        await self.write_registers(address, values)
+
+
     async def _set_sd(self, start: int, data: list[int]) -> None:
         """Set writable SD registers. Called by `set`.
 

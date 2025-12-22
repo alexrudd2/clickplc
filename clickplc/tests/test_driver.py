@@ -287,6 +287,18 @@ async def test_txt_roundtrip(plc_driver):
     assert await plc_driver.get('txt1000') == '0'  # ensure txt999 did not clobber it
 
 @pytest.mark.asyncio(loop_scope='session')
+async def test_ctd_roundtrip(plc_driver):
+    """Confirm Cctd double ints are read back correctly after being set."""
+    await plc_driver.set('ctd1', 1)
+    await plc_driver.set('ctd3', [-2**31, 2**31 - 1])
+    expected = {'ctd1': 1, 'ctd2': 0, 'ctd3': -2**31, 'ctd4': 2**31 - 1, 'ctd5': 0}
+    assert expected == await plc_driver.get('ctd1-ctd5')
+    assert await plc_driver.get('ctd3') == -2**31
+    assert await plc_driver.get('ctd4') == 2**31 - 1
+    await plc_driver.set('ctd250', 250)
+    assert await plc_driver.get('ctd250') == 250
+
+@pytest.mark.asyncio(loop_scope='session')
 async def test_get_error_handling(plc_driver):
     """Confirm the driver gives an error on invalid get() calls."""
     with pytest.raises(ValueError, match='An address must be supplied'):
@@ -446,6 +458,10 @@ async def test_ctd_error_handling(plc_driver):
         await plc_driver.get('ctd251')
     with pytest.raises(ValueError, match=r'CTD end must be in \[1, 250\]'):
         await plc_driver.get('ctd1-ctd251')
+    with pytest.raises(ValueError, match=r'CTD must be in \[1, 250\]'):
+        await plc_driver.set('ctd251', 1)
+    with pytest.raises(ValueError, match=r'Data list longer than available addresses.'):
+        await plc_driver.set('ctd250', [1, 2])
 
 @pytest.mark.asyncio(loop_scope='session')
 async def test_sd_error_handling(plc_driver):
