@@ -25,19 +25,17 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         enable-cache: true
+        activate-environment: true
     - name: Install dependencies
       run: |
         uv sync --all-extras
         uv add pymodbus==${{ matrix.pymodbus-version }}
     - name: Lint with ruff
-      run: |
-        uv run ruff check .
+      run: ruff check .
     - name: Check types with zuban
-      run: |
-        uv run zuban check
+      run: zuban check
     - name: Pytest
-      run: |
-        uv run pytest
+      run: pytest
 
 permissions:
   contents: read
