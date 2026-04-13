@@ -46,7 +46,7 @@ dev = [
   'pytest-asyncio>=0.23.8',
   'ruff==0.15.8',
   'types-PyYAML',
-  "zuban>=0.3.0",
+  "zuban==0.7.0",
 ]
 
 [tool.setuptools]
@@ -88,10 +88,11 @@ ignore-variadic-names = true
 [tool.ruff.format]
 quote-style = "preserve"
 
-[tool.mypy]
+[tool.zuban]
 check_untyped_defs = true
+mode = "mypy"
 
-[[tool.mypy.overrides]]
+[[tool.zuban.overrides]]
 module = ["pymodbus.*"]
 ignore_missing_imports = true
 
