@@ -46,7 +46,7 @@ dev = [
   'pytest-asyncio>=0.23.8',
   'ruff==0.16.5',
   'types-PyYAML',
-  "zuban==0.9.3",
+  "zuban==0.10.0",
 ]
 
 [tool.setuptools]
