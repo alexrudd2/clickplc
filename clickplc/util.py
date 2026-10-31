@@ -81,7 +81,7 @@ class AsyncioModbusClient:
         (ie. 125 registers, 62 DF addresses), which this function manages by
         chunking larger requests.
         """
-        registers = []
+        registers: list[int] = []
         while count > 124:
             r = await self._request('read_holding_registers', address=address, count=124)
             registers += r.registers
