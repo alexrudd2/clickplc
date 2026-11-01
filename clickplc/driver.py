@@ -824,7 +824,7 @@ class ClickPLC(AsyncioModbusClient):
             return {}
         with open(tag_filepath) as csv_file:
             csv_data = csv_file.read().splitlines()
-        csv_data[0] = csv_data[0].lstrip('## ')
+        csv_data[0] = csv_data[0].removeprefix('## ')
         parsed: dict[str, dict[str, Any]] = {
             row['Nickname']: {
                 'address': {

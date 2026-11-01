@@ -58,7 +58,6 @@ target-version = "py311"
 
 [tool.ruff.lint]
 ignore = [
-  "B005",  # FIXME: lstrip()
   "D104",  # Missing docstring in public package
   "D107",  # Missing docstring in __init__
 ]
